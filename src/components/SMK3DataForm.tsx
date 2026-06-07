@@ -144,6 +144,12 @@ export default function SMK3DataForm({
     }
   };
 
+  const shouldShow = (field: FormField): boolean => {
+    if (!field.showWhen) return true;
+    const watchedValue = formData[field.showWhen.field];
+    return watchedValue === field.showWhen.value;
+    };
+    
   const renderField = (field: FormField) => {
     const value = formData[field.name] ?? "";
     const baseClass =
@@ -203,23 +209,27 @@ export default function SMK3DataForm({
           />
         );
       case "select":
-        return (
-          <select
-            id={field.name}
-            name={field.name}
-            value={value}
-            onChange={e => handleInputChange(field.name, e.target.value)}
-            required={field.required}
-            className={baseClass}
-          >
-            <option value="">Pilih {field.label}</option>
-            {field.options?.map(option => (
-              <option key={option} value={option}>
-                {option}
+      return (
+        <select
+          id={field.name}
+          name={field.name}
+          value={value}
+          onChange={e => handleInputChange(field.name, e.target.value)}
+          required={field.required}
+          className={baseClass}
+        >
+          <option value="">Pilih {field.label}</option>
+          {field.options?.map(option => {
+            const val = typeof option === "string" ? option : option.value;
+            const lbl = typeof option === "string" ? option : option.label;
+            return (
+              <option key={val} value={val}>
+                {lbl}
               </option>
-            ))}
-          </select>
-        );
+            );
+          })}
+        </select>
+      );
       case "file":
         return (
           <div>
@@ -612,7 +622,7 @@ export default function SMK3DataForm({
 
         {/* Form Fields */}
         <div className="space-y-4">
-          {fields.map(field => (
+          {fields.filter(shouldShow).map(field => (
             <div key={field.name}>
               <label
                 htmlFor={field.name}

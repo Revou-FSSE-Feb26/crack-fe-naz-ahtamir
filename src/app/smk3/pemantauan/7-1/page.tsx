@@ -88,10 +88,7 @@ export default function SubElement71Page() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="bg-[#f15a22] text-white font-barlow-condensed font-extrabold text-[14px] px-3 py-1.5 group-hover:bg-[#f7941d] transition-colors">
                     {item.id}
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-[#f15a22]/10 flex items-center justify-center text-[#f15a22] font-barlow-condensed font-bold text-[14px]">
-                    {index + 1}
-                  </div>
+                  </div>                  
                 </div>
 
                 {/* Title */}
@@ -105,12 +102,35 @@ export default function SubElement71Page() {
                 </p>
 
                 {/* Action Button */}
+                {item.id === "7.1.1" ? (
+                <Link
+                  href={`/smk3/pemantauan/7-1/${item.id.replace(/\./g, '-')}`}
+                  className="flex items-center gap-2 text-[#f15a22] font-barlow-condensed font-bold text-[12px] tracking-[0.08em] uppercase opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <span>Lihat Detail</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="transition-transform group-hover:translate-x-1"
+                  >
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
+                </Link>
+                ) : (
                 <Link
                   href={`/smk3/pemantauan/7-1/${item.id.replace(/\./g, '-')}`}
                   className="block w-full px-4 py-2.5 bg-[#f15a22] text-white font-barlow-condensed font-bold text-[11px] tracking-[0.08em] uppercase hover:bg-[#f7941d] transition-colors text-center"
                 >
                   Kelola Data
-                </Link>
+                </Link>)}
               </div>
             ))}
           </div>

@@ -6,14 +6,20 @@ export interface SubSubElementFormConfig {
 export interface FormField {
   name: string;
   label: string;
+  labelCn?: string;
   type: "text" | "email" | "number" | "date" | "textarea" | "select" | "file";
   required?: boolean;
   placeholder?: string;
-  options?: string[];
+  options?: string[] | { value: string; label: string }[];
   rows?: number;
   accept?: string;
   multiple?: boolean;
   maxSize?: number;
+  note?: string; 
+  showWhen?: {        
+    field: string;
+    value: string;
+  };
 }
 
 export interface FileAttachment {
@@ -55,4 +61,25 @@ export interface SubSubElementData {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  tanggalInspeksi?: string;
+  safetyOfficer?: string;
+  lokasiUtama?: string;
+  areaInspeksiSpesifik?: string;
+  qmbGroup?: string;
+  namaDepartemen?: string;
+  dokumentasiHazard?: string;       // URL setelah upload
+  jenisTemuan?: string;
+  levelHazard?: string;
+  tipeTemuan?: string;
+  kategoriHazard?: string;
+  kategori6S?: string;
+  deskripsiKetidaksesuaian?: string;
+  hierarkiPengendalian?: string;
+  rekomendasiPerbaikan?: string;
+  deadlinePerbaikan?: string;
+  picPerbaikan?: string;
+  statusPerbaikan?: string;
+  dokumentasiPerbaikan?: string;    // URL setelah upload
+  keteranganTambahan?: string;
+  [key: string]: unknown;
 }

@@ -81,10 +81,7 @@ export default function SubSubElement711Page() {
             <div className="bg-[#f15a22] px-4 py-2 flex items-center justify-center text-white font-barlow-condensed font-extrabold text-[18px]">
               7.1.1
             </div>
-            <div className="flex-1">
-              <div className="font-barlow-condensed text-[11px] font-bold tracking-[0.2em] uppercase text-[#f15a22] mb-2">
-                Sub-Sub Elemen 7.1.1
-              </div>
+            <div className="flex-1">              
               <h1 className="font-barlow-condensed font-extrabold text-white uppercase leading-[0.95] tracking-[-0.01em] text-[clamp(24px,4vw,40px)]">
                 Pelaksanaan Inspeksi K3
               </h1>
@@ -152,10 +149,7 @@ export default function SubSubElement711Page() {
                         </>
                       )}
                     </svg>
-                  </div>
-                  <div className="bg-[#f15a22] text-white font-barlow-condensed font-extrabold text-[12px] px-3 py-1 group-hover:bg-[#f7941d] transition-colors">
-                    {item.id.replace(/-/g, " ")}
-                  </div>
+                  </div>                  
                 </div>
 
                 {/* Title */}
