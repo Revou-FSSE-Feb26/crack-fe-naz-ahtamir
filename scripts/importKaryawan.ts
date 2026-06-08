@@ -1,7 +1,10 @@
 import * as XLSX from "xlsx";
 import * as bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import path from "path";
+import * as path from "path";
+
+// @ts-ignore - __dirname available in Node.js
+const scriptDir = __dirname;
 
 // Paste model User langsung di sini karena script jalan di luar Next.js
 const MONGODB_URI = "mongodb+srv://nasaruddinahtamir_db_user:n8pM44td13Gxc7AI@cluster0.ohvv5bg.mongodb.net/qmb-ohs?retryWrites=true&w=majority&appName=Cluster0";
@@ -27,7 +30,7 @@ async function importKaryawan() {
 
   // 2. Baca file Excel
   // Ganti path sesuai lokasi file Excel kamu
-  const filePath = path.join(__dirname, "karyawan.xlsx");
+  const filePath = path.join(scriptDir, "karyawan.xlsx");
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet) as any[];

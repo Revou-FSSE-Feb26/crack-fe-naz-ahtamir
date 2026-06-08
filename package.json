@@ -7,7 +7,9 @@
     "dev": "bun run next dev",
     "build": "bun run next build",
     "start": "bun run next start",
-    "lint": "bun run eslint"
+    "lint": "bun run eslint",
+    "create-admin": "bun run scripts/createAdmin.ts",
+    "import-karyawan": "bun run scripts/importKaryawan.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",

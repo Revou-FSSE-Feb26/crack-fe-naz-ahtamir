@@ -1,9 +1,10 @@
+import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -12,28 +13,45 @@ export const authOptions = {
         password:   { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.idKaryawan || !credentials?.password) return null;
+        try {
+          if (!credentials?.idKaryawan || !credentials?.password) {
+            return null;
+          }
 
-        await connectDB();
+          await connectDB();
 
-        const user = await User.findOne({
-          idKaryawan: credentials.idKaryawan.trim(),
-        });
+          const user = await User.findOne({
+            idKaryawan: credentials.idKaryawan.trim(),
+          });
 
-        if (!user) return null;
-        if (!user.approved) return null;
+          if (!user) {
+            console.log("User not found:", credentials.idKaryawan);
+            return null;
+          }
 
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) return null;
+          if (!user.approved) {
+            console.log("User not approved:", credentials.idKaryawan);
+            throw new Error("Account not approved yet");
+          }
 
-        return {
-          id:          user._id.toString(),
-          idKaryawan:  user.idKaryawan,
-          name:        user.nama,
-          jabatan:     user.jabatan,
-          departemen:  user.departemen,
-          role:        user.role,
-        };
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+          if (!isValid) {
+            console.log("Invalid password for:", credentials.idKaryawan);
+            return null;
+          }
+
+          return {
+            id:          user._id.toString(),
+            idKaryawan:  user.idKaryawan,
+            name:        user.nama,
+            jabatan:     user.jabatan,
+            departemen:  user.departemen,
+            role:        user.role,
+          };
+        } catch (error) {
+          console.error("Auth error:", error);
+          throw error;
+        }
       },
     }),
   ],
@@ -45,22 +63,29 @@ export const authOptions = {
         token.jabatan     = user.jabatan;
         token.departemen  = user.departemen;
         token.role        = user.role;
+        token.name        = user.name;
       }
       return token;
     },
     async session({ session, token }: any) {
-      if (token) {
+      if (token && session.user) {
         session.user.id          = token.id;
         session.user.idKaryawan  = token.idKaryawan;
         session.user.jabatan     = token.jabatan;
         session.user.departemen  = token.departemen;
         session.user.role        = token.role;
+        session.user.name        = token.name;
       }
       return session;
     },
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
-  session: { strategy: "jwt" as const },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 };
