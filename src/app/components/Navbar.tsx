@@ -1,42 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 
-const navLinks = [
+const publicLinks = [
   { name: "Home", href: "/" },
-  { name: "About & Policy", href: "/about" },
+  { name: "About", href: "/about" },
+];
+
+const moreLinks = [
   { name: "Programs", href: "/programs" },
   { name: "Gallery", href: "/gallery" },
   { name: "Dashboard", href: "/dashboard" },
-  { name: "SMK3", href: "/smk3", requireAuth: true },
   { name: "Report", href: "/contact" },
 ];
 
 export function Navbar() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close mobile menu when route changes
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
+
+  const moreRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<HTMLDivElement>(null);
+
+  // Tutup dropdown saat klik di luar
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Tutup semua saat route berubah
+  useEffect(() => {
+    setMobileOpen(false);
+    setMoreOpen(false);
+    setAvatarOpen(false);
   }, [pathname]);
 
-  // Prevent body scroll when mobile menu is open
+  // Lock scroll saat mobile menu buka
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isMobileMenuOpen]);
+    document.body.style.overflow = mobileOpen ? "hidden" : "unset";
+    return () => { document.body.style.overflow = "unset"; };
+  }, [mobileOpen]);
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
@@ -44,262 +62,335 @@ export function Navbar() {
     router.refresh();
   };
 
+  const isActive = (href: string) =>
+    href === "/"
+      ? pathname === "/"
+      : pathname === href || pathname.startsWith(href + "/");
+
+  const isAuthenticated = status === "authenticated";
   const isAdmin = session?.user?.role === "admin";
+  const userInitial = session?.user?.name?.charAt(0).toUpperCase() ?? "U";
+
+  const linkClass = (href: string) =>
+    `font-barlow-condensed text-[12px] tracking-[0.1em] uppercase px-3 py-2 transition-colors ${
+      isActive(href)
+        ? "text-[#f15a22]"
+        : "text-[#c5c0bb] hover:text-white"
+    }`;
 
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#231f20] border-b-[3px] border-b-[#f15a22]">
-        <div className="h-[72px] flex items-center justify-between px-4 sm:px-6 lg:px-10">
+        <div className="h-[72px] flex items-center justify-between px-5 md:px-10">
+
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-3.5 flex-shrink-0">
-            <div className="w-[36px] h-[36px] sm:w-[42px] sm:h-[42px] bg-[#f15a22] flex items-center justify-center text-white font-barlow-condensed font-extrabold text-base sm:text-lg tracking-wide">
+          <Link href="/" className="flex items-center gap-3 flex-shrink-0">
+            <div className="w-9 h-9 bg-[#f15a22] flex items-center justify-center
+                            text-white font-barlow-condensed font-extrabold text-base">
               
             </div>
-            <div className="hidden sm:block font-barlow-condensed font-bold text-sm sm:text-base text-white uppercase leading-tight tracking-wider">
-              Safety and Emergency Management Department
-              <span className="block font-normal text-[10px] sm:text-[11px] text-[#c5c0bb] tracking-[0.12em]">
+            <div className="hidden sm:block">
+              <div className="font-barlow-condensed font-bold text-sm text-white
+                              uppercase tracking-wider leading-tight">
+                ERM Department
+              </div>
+              <div className="font-barlow-condensed text-[10px] text-[#c5c0bb]
+                              tracking-[0.12em] uppercase">
                 PT. QMB New Energy Materials
-              </span>
+              </div>
             </div>
-            {/* Mobile logo text */}
-            <div className="sm:hidden font-barlow-condensed font-bold text-xs text-white uppercase leading-tight">
-              OHS Portal
+            {/* Mobile fallback */}
+            <div className="sm:hidden font-barlow-condensed font-bold text-xs
+                            text-white uppercase tracking-wider">
+              ERM Department
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-1">
-            {navLinks.map((link) => {
-              // Skip SMK3 link if not authenticated
-              if (link.requireAuth && status !== "authenticated") {
-                return null;
-              }
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`nav-underline font-barlow-condensed text-[11px] xl:text-xs tracking-wider uppercase px-2.5 xl:px-3.5 py-2 transition-colors ${
-                    pathname === link.href || (link.href === "/smk3" && pathname.startsWith("/smk3"))
-                      ? "text-[#f15a22]"
-                      : "text-[#c5c0bb] hover:text-white"
-                  }`}
+
+            {/* Public links */}
+            {publicLinks.map(link => (
+              <Link key={link.href} href={link.href} className={linkClass(link.href)}>
+                {link.name}
+              </Link>
+            ))}
+
+            {/* More dropdown */}
+            <div className="relative" ref={moreRef}>
+              <button
+                onClick={() => setMoreOpen(prev => !prev)}
+                className={`flex items-center gap-1 font-barlow-condensed text-[12px]
+                            tracking-[0.1em] uppercase px-3 py-2 transition-colors
+                            ${moreLinks.some(l => isActive(l.href))
+                              ? "text-[#f15a22]"
+                              : "text-[#c5c0bb] hover:text-white"
+                            }`}
+              >
+                More
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12" height="12"
+                  viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  className={`transition-transform ${moreOpen ? "rotate-180" : ""}`}
                 >
-                  {link.name}
-                </Link>
-              );
-            })}
-            
-            {/* Auth buttons - Desktop */}
-            {status === "authenticated" ? (
-              <>
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="nav-underline font-barlow-condensed text-[11px] xl:text-xs tracking-wider uppercase text-[#f15a22] px-2.5 xl:px-3.5 py-2 hover:text-white transition-colors"
-                  >
-                    Admin
-                  </Link>
-                )}
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+
+              {moreOpen && (
+                <div className="absolute top-full right-0 mt-2 w-48
+                                bg-[#231f20] border border-[#3a3535]
+                                shadow-lg py-1 z-50">
+                  {moreLinks.map(link => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`block px-4 py-2.5 font-barlow-condensed text-[12px]
+                                  tracking-[0.08em] uppercase transition-colors
+                                  ${isActive(link.href)
+                                    ? "text-[#f15a22] bg-white/5"
+                                    : "text-[#c5c0bb] hover:text-white hover:bg-white/5"
+                                  }`}
+                    >
+                      {link.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-[#3a3535] mx-2" />
+
+            {/* SMK3 — hanya jika login */}
+            {isAuthenticated && (
+              <Link
+                href="/smk3"
+                className={`font-barlow-condensed text-[12px] tracking-[0.1em]
+                            uppercase px-3 py-1.5 border transition-colors
+                            ${isActive("/smk3")
+                              ? "border-[#f15a22] text-[#f15a22] bg-[#f15a22]/10"
+                              : "border-[#f15a22] text-[#f15a22] hover:bg-[#f15a22] hover:text-white"
+                            }`}
+              >
+                SMK3
+              </Link>
+            )}
+
+            {/* Auth area */}
+            {isAuthenticated ? (
+              <div className="relative ml-2" ref={avatarRef}>
                 <button
-                  onClick={handleLogout}
-                  className="font-barlow-condensed text-[11px] xl:text-xs tracking-wider uppercase text-[#c5c0bb] px-2.5 xl:px-3.5 py-2 hover:text-white transition-colors"
+                  onClick={() => setAvatarOpen(prev => !prev)}
+                  className="w-8 h-8 rounded-full bg-[#f15a22] flex items-center
+                             justify-center text-white font-barlow-condensed
+                             font-bold text-sm hover:bg-[#f7941d] transition-colors"
                 >
-                  Logout
+                  {userInitial}
                 </button>
-              </>
+
+                {avatarOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-48
+                                  bg-[#231f20] border border-[#3a3535]
+                                  shadow-lg py-1 z-50">
+                    {/* User info */}
+                    <div className="px-4 py-2.5 border-b border-[#3a3535]">
+                      <div className="font-barlow-condensed font-bold text-[12px]
+                                      text-white uppercase tracking-wide truncate">
+                        {session?.user?.name}
+                      </div>
+                      <div className="text-[11px] text-[#6b6560] truncate">
+                        {session?.user?.email}
+                      </div>
+                    </div>
+
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-2 px-4 py-2.5
+                                   font-barlow-condensed text-[12px] tracking-[0.08em]
+                                   uppercase text-[#f15a22] hover:bg-white/5
+                                   transition-colors"
+                      >
+                        Admin Panel
+                      </Link>
+                    )}
+
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 w-full px-4 py-2.5
+                                 font-barlow-condensed text-[12px] tracking-[0.08em]
+                                 uppercase text-[#c5c0bb] hover:text-white
+                                 hover:bg-white/5 transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <Link
                 href="/login"
-                className="font-barlow-condensed text-[11px] xl:text-xs tracking-wider uppercase text-[#f15a22] px-2.5 xl:px-3.5 py-2 hover:text-white transition-colors"
+                className="font-barlow-condensed text-[12px] tracking-[0.1em]
+                           uppercase text-[#f15a22] px-3 py-2
+                           hover:text-white transition-colors ml-1"
               >
                 Login
               </Link>
             )}
           </div>
 
-          {/* Hamburger Button */}
+          {/* Hamburger */}
           <button
-            className="lg:hidden flex flex-col gap-1.5 p-2 bg-transparent border-0 cursor-pointer z-50"
+            className="lg:hidden flex flex-col gap-1.5 p-2 z-50"
             aria-label="Toggle menu"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onClick={() => setMobileOpen(prev => !prev)}
           >
-            <span
-              className={`block w-6 h-0.5 bg-white transition-all duration-300 ${
-                isMobileMenuOpen ? "rotate-45 translate-y-2" : ""
-              }`}
-            ></span>
-            <span
-              className={`block w-6 h-0.5 bg-white transition-all duration-300 ${
-                isMobileMenuOpen ? "opacity-0" : ""
-              }`}
-            ></span>
-            <span
-              className={`block w-6 h-0.5 bg-white transition-all duration-300 ${
-                isMobileMenuOpen ? "-rotate-45 -translate-y-2" : ""
-              }`}
-            ></span>
+            <span className={`block w-6 h-0.5 bg-white transition-all duration-300
+                              ${mobileOpen ? "rotate-45 translate-y-2" : ""}`} />
+            <span className={`block w-6 h-0.5 bg-white transition-all duration-300
+                              ${mobileOpen ? "opacity-0" : ""}`} />
+            <span className={`block w-6 h-0.5 bg-white transition-all duration-300
+                              ${mobileOpen ? "-rotate-45 -translate-y-2" : ""}`} />
           </button>
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile overlay */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300 ${
-          isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={() => setIsMobileMenuOpen(false)}
-      ></div>
+        className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300
+                    ${mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        onClick={() => setMobileOpen(false)}
+      />
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile drawer */}
       <div
-        className={`fixed top-[72px] right-0 bottom-0 w-[280px] sm:w-[320px] bg-[#231f20] z-40 lg:hidden transform transition-transform duration-300 ease-in-out overflow-y-auto ${
-          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed top-[72px] right-0 bottom-0 w-[280px] bg-[#231f20] z-40
+                    lg:hidden transform transition-transform duration-300 overflow-y-auto
+                    ${mobileOpen ? "translate-x-0" : "translate-x-full"}`}
       >
-        <div className="py-6">
-          {/* User Info - if logged in */}
-          {status === "authenticated" && session?.user && (
-            <div className="px-6 pb-6 mb-6 border-b border-[#3a3535]">
+        <div className="py-4">
+
+          {/* User info jika login */}
+          {isAuthenticated && (
+            <div className="px-5 pb-4 mb-2 border-b border-[#3a3535]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#f15a22] rounded-full flex items-center justify-center text-white font-barlow-condensed font-bold text-sm">
-                  {session.user.name?.charAt(0).toUpperCase()}
+                <div className="w-9 h-9 bg-[#f15a22] rounded-full flex items-center
+                                justify-content text-white font-barlow-condensed
+                                font-bold text-sm flex-shrink-0 justify-center">
+                  {userInitial}
                 </div>
-                <div>
-                  <div className="font-barlow-condensed font-bold text-sm text-white">
-                    {session.user.name}
+                <div className="overflow-hidden">
+                  <div className="font-barlow-condensed font-bold text-sm text-white truncate">
+                    {session?.user?.name}
                   </div>
-                  <div className="text-xs text-[#c5c0bb]">{session.user.email}</div>
+                  <div className="text-[11px] text-[#6b6560] truncate">
+                    {session?.user?.email}
+                  </div>
                 </div>
               </div>
-              {isAdmin && (
-                <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#f15a22]/20 rounded text-[#f15a22] text-xs font-barlow-condensed font-bold uppercase tracking-wider">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
-                  Admin
-                </div>
-              )}
             </div>
           )}
 
-          {/* Navigation Links */}
-          <div className="space-y-1 px-3">
-            {navLinks.map((link) => {
-              // Skip SMK3 link if not authenticated
-              if (link.requireAuth && status !== "authenticated") {
-                return null;
-              }
-              return (
+          {/* Nav links */}
+          <div className="px-3 space-y-0.5">
+            {publicLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`block font-barlow-condensed font-semibold text-sm
+                            tracking-wider uppercase py-2.5 px-4 transition-all
+                            ${isActive(link.href)
+                              ? "bg-[#f15a22] text-white"
+                              : "text-[#c5c0bb] hover:bg-white/5 hover:text-white"
+                            }`}
+              >
+                {link.name}
+              </Link>
+            ))}
+
+            {/* More section */}
+            <div className="pt-2 pb-1 px-4">
+              <div className="font-barlow-condensed text-[10px] tracking-[0.2em]
+                              uppercase text-[#6b6560]">
+                More
+              </div>
+            </div>
+            {moreLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`block font-barlow-condensed font-semibold text-sm
+                            tracking-wider uppercase py-2.5 px-4 transition-all
+                            ${isActive(link.href)
+                              ? "bg-[#f15a22] text-white"
+                              : "text-[#c5c0bb] hover:bg-white/5 hover:text-white"
+                            }`}
+              >
+                {link.name}
+              </Link>
+            ))}
+
+            {/* SMK3 - hanya jika login */}
+            {isAuthenticated && (
+              <>
+                <div className="pt-2 pb-1 px-4">
+                  <div className="font-barlow-condensed text-[10px] tracking-[0.2em]
+                                  uppercase text-[#6b6560]">
+                    Internal
+                  </div>
+                </div>
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`block font-barlow-condensed font-semibold text-sm tracking-wider uppercase py-3 px-4 rounded transition-all ${
-                    pathname === link.href || (link.href === "/smk3" && pathname.startsWith("/smk3"))
-                      ? "bg-[#f15a22] text-white"
-                      : "text-[#c5c0bb] hover:bg-white/5 hover:text-white"
-                  }`}
+                  href="/smk3"
+                  className={`block font-barlow-condensed font-semibold text-sm
+                              tracking-wider uppercase py-2.5 px-4 transition-all
+                              ${isActive("/smk3")
+                                ? "bg-[#f15a22] text-white"
+                                : "text-[#f15a22] hover:bg-[#f15a22]/10"
+                              }`}
                 >
-                  {link.name}
+                  SMK3
                 </Link>
-              );
-            })}
+              </>
+            )}
           </div>
 
-          {/* Auth Section */}
-          <div className="mt-6 pt-6 border-t border-[#3a3535] px-3 space-y-1">
-            {status === "authenticated" ? (
+          {/* Auth */}
+          <div className="mt-4 pt-4 border-t border-[#3a3535] px-3 space-y-0.5">
+            {isAuthenticated ? (
               <>
                 {isAdmin && (
                   <Link
                     href="/admin"
-                    className="flex items-center gap-3 font-barlow-condensed font-semibold text-sm tracking-wider uppercase text-[#f15a22] py-3 px-4 rounded hover:bg-white/5 transition-all"
+                    className="block font-barlow-condensed font-semibold text-sm
+                               tracking-wider uppercase py-2.5 px-4 text-[#f15a22]
+                               hover:bg-white/5 transition-all"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
                     Admin Panel
                   </Link>
                 )}
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3 w-full font-barlow-condensed font-semibold text-sm tracking-wider uppercase text-[#c5c0bb] py-3 px-4 rounded hover:bg-white/5 hover:text-white transition-all"
+                  className="block w-full text-left font-barlow-condensed font-semibold
+                             text-sm tracking-wider uppercase py-2.5 px-4 text-[#c5c0bb]
+                             hover:bg-white/5 hover:text-white transition-all"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
                   Logout
                 </button>
               </>
             ) : (
               <Link
                 href="/login"
-                className="flex items-center gap-3 font-barlow-condensed font-semibold text-sm tracking-wider uppercase text-[#f15a22] py-3 px-4 rounded hover:bg-white/5 transition-all"
+                className="block font-barlow-condensed font-semibold text-sm
+                           tracking-wider uppercase py-2.5 px-4 text-[#f15a22]
+                           hover:bg-white/5 transition-all"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
                 Login
               </Link>
             )}
-          </div>
-
-          {/* Footer Info */}
-          <div className="mt-8 px-6 pt-6 border-t border-[#3a3535]">
-            <div className="text-[10px] text-[#6b6560] uppercase tracking-wider mb-2">
-              Safety And Emergency Management Department
-            </div>
-            <div className="text-xs text-[#c5c0bb] leading-relaxed">
-              PT. QMB New Energy Materials
-            </div>
           </div>
         </div>
       </div>

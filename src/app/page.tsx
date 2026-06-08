@@ -21,7 +21,7 @@ export default function Home() {
 
         <div className="relative z-2 text-center px-6 max-w-[900px]">
           <div className="inline-block bg-[#f15a22] text-white font-barlow-condensed font-bold text-[11px] tracking-[0.2em] uppercase px-4 py-1.5 mb-7">
-            Safety and Emergency Management Department
+            Emergency Response Management Department
           </div>
           <h1 className="font-barlow-condensed font-extrabold text-white uppercase leading-[0.95] tracking-[-0.01em] mb-6 text-[clamp(39px,7vw,62px)]">
             Life Above Everything<br />

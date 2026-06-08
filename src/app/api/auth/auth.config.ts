@@ -1,110 +1,66 @@
-import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
+import { connectDB } from "@/lib/mongodb";
+import { User } from "@/models/User";
 
-// In-memory user storage (replace with database in production)
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  passwordHash: string;
-  role: "admin" | "user";
-  approved: boolean;
-}
-
-export const users: User[] = [];
-
-// Helper to hash password
-export async function hashPassword(password: string): Promise<string> {
-  return await bcrypt.hash(password, 10);
-}
-
-// Helper to verify password
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return await bcrypt.compare(password, hashedPassword);
-}
-
-// Initialize with a default admin user
-const DEFAULT_ADMIN_EMAIL = "admin@ohs.local";
-const DEFAULT_ADMIN_PASSWORD = "admin123";
-
-// Initialize default admin
-(async () => {
-  const DEFAULT_ADMIN_PASSWORD_HASH = await hashPassword(DEFAULT_ADMIN_PASSWORD);
-  users.push({
-    id: "1",
-    name: "Administrator",
-    email: DEFAULT_ADMIN_EMAIL,
-    passwordHash: DEFAULT_ADMIN_PASSWORD_HASH,
-    role: "admin",
-    approved: true,
-  });
-})();
-
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   providers: [
     CredentialsProvider({
-      name: "Credentials",
+      name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        idKaryawan: { label: "ID Karyawan", type: "text" },
+        password:   { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.idKaryawan || !credentials?.password) return null;
 
-        const user = users.find((u) => u.email === credentials.email);
+        await connectDB();
 
-        if (!user) {
-          return null;
-        }
+        const user = await User.findOne({
+          idKaryawan: credentials.idKaryawan.trim(),
+        });
 
-        const isPasswordValid = await verifyPassword(
-          credentials.password,
-          user.passwordHash
-        );
+        if (!user) return null;
+        if (!user.approved) return null;
 
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        if (!user.approved) {
-          throw new Error("Account not approved yet");
-        }
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+        if (!isValid) return null;
 
         return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
+          id:          user._id.toString(),
+          idKaryawan:  user.idKaryawan,
+          name:        user.nama,
+          jabatan:     user.jabatan,
+          departemen:  user.departemen,
+          role:        user.role,
         };
       },
     }),
   ],
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as any).role;
+        token.id          = user.id;
+        token.idKaryawan  = user.idKaryawan;
+        token.jabatan     = user.jabatan;
+        token.departemen  = user.departemen;
+        token.role        = user.role;
       }
       return token;
     },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+    async session({ session, token }: any) {
+      if (token) {
+        session.user.id          = token.id;
+        session.user.idKaryawan  = token.idKaryawan;
+        session.user.jabatan     = token.jabatan;
+        session.user.departemen  = token.departemen;
+        session.user.role        = token.role;
       }
       return session;
     },
   },
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+  pages: {
+    signIn: "/login",
   },
-  secret: process.env.NEXTAUTH_SECRET || "your-secret-key-change-in-production",
+  session: { strategy: "jwt" as const },
 };

@@ -463,10 +463,7 @@ export default function SMK3DataForm({
         <div className="bg-[#f15a22]/10 p-4 rounded">
           <h3 className="font-barlow-condensed font-bold text-lg text-[#231f20] uppercase">
             {isEdit ? "Edit Data" : "Tambah Data Baru"}
-          </h3>
-          <p className="text-sm text-[#6b6560] mt-1">
-            {subSubElementId} · {subSubElementTitle}
-          </p>
+          </h3>          
         </div>
 
         {/* Error */}

@@ -9,7 +9,7 @@ export default function LoginPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const [email, setEmail] = useState("");
+  const [idKaryawan, setIdKaryawan] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,7 @@ export default function LoginPage() {
 
     const result = await signIn("credentials", {
       redirect: false,
-      email,
+      idKaryawan,
       password,
     });
 
@@ -38,9 +38,9 @@ export default function LoginPage() {
 
     if (result?.error) {
       if (result.error === "Account not approved yet") {
-        setError("Account not approved yet. Please contact administrator.");
+        setError("Akun belum disetujui. Silakan hubungi administrator.");
       } else {
-        setError("Invalid email or password");
+        setError("ID Karyawan atau password salah");
       }
     } else {
       router.push("/dashboard");
@@ -78,18 +78,18 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label
-                  htmlFor="email"
+                  htmlFor="idKaryawan"
                   className="font-barlow-condensed font-bold text-[13px] tracking-[0.1em] uppercase text-[#231f20] mb-2 block"
                 >
-                  Email Address
+                  ID Karyawan
                 </label>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="idKaryawan"
+                  type="text"
+                  value={idKaryawan}
+                  onChange={(e) => setIdKaryawan(e.target.value)}
                   className="w-full px-4 py-3 bg-[#ffffff] border border-[#c5c0bb] font-barlow text-[14px] text-[#231f20] focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22] transition-colors"
-                  placeholder="Enter your email"
+                  placeholder="Enter your ID Karyawan"
                   required
                 />
               </div>
