@@ -11,7 +11,7 @@ export interface IFinding extends Document {
     fileSize: number;
     uploadedAt: string;
   }>;
-  findingStatus: "pending_approval" | "INPG" | "CLSD";
+  findingStatus: "OPEN" | "pending_approval" | "INPG" | "CLSD";
   approval?: {
     requestedAt?: string;
     requestedBy?: string;
@@ -37,8 +37,8 @@ const FindingSchema = new Schema<IFinding>(
     files:           { type: Schema.Types.Mixed, default: [] },
     findingStatus: {
       type: String,
-      enum: ["pending_approval", "INPG", "CLSD"],
-      default: "pending_approval",
+      enum: ["OPEN", "pending_approval", "INPG", "CLSD"],
+      default: "OPEN",
     },
     approval:    { type: Schema.Types.Mixed },
     createdBy:   { type: String, required: true },

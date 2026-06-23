@@ -6,8 +6,8 @@ import * as path from "path";
 // @ts-ignore - __dirname available in Node.js
 const scriptDir = __dirname;
 
-// Paste model User langsung di sini karena script jalan di luar Next.js
-const MONGODB_URI = "mongodb+srv://nasaruddinahtamir_db_user:n8pM44td13Gxc7AI@cluster0.ohvv5bg.mongodb.net/qmb-ohs?retryWrites=true&w=majority&appName=Cluster0";
+// Connect ke MongoDB Local untuk testing
+const MONGODB_URI = "mongodb://localhost:27017/qmb-ohs";
 
 // Jabatan yang termasuk supervisor
 const SUPERVISOR_KEYWORDS = [

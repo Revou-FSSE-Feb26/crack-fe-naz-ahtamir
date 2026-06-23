@@ -31,9 +31,12 @@ export interface FileAttachment {
 }
 
 // Status lifecycle:
-// INPG  → pending_approval → CLSD  (jika ada perbaikan, butuh approval)
-// CLSD langsung submit tanpa approval
-export type FindingStatus = "CLSD" | "INPG" | "pending_approval";
+// Status workflow: OPEN → INPG (submit) → pending_approval (atasan review) → CLSD (approved)
+// OPEN: draft, belum disubmit
+// INPG: sudah disubmit, menunggu approval atasan
+// pending_approval: legacy, sama dengan INPG
+// CLSD: approved dan closed
+export type FindingStatus = "OPEN" | "CLSD" | "INPG" | "pending_approval";
 
 export interface ApprovalInfo {
   requestedAt: string;
@@ -59,6 +62,7 @@ export interface SubSubElementData {
   findingStatus?: FindingStatus;
   approval?: ApprovalInfo;
   createdBy: string;
+  createdById?: string;  // ID karyawan pembuat
   createdAt: string;
   updatedAt: string;
   tanggalInspeksi?: string;

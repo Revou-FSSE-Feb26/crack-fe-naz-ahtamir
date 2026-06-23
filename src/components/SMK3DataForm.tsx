@@ -14,6 +14,11 @@ interface SMK3DataFormProps {
   // Apakah form ini untuk modul inspeksi ketidaksesuaian
   // (yang memerlukan approval workflow)
   hasApprovalWorkflow?: boolean;
+  // Auto-fill safety officer dari session
+  autoFillSafetyOfficer?: {
+    name: string;
+    id: string;
+  };
 }
 
 // Step untuk approval modal
@@ -28,12 +33,18 @@ export default function SMK3DataForm({
   initialData,
   isEdit = false,
   hasApprovalWorkflow = false,
+  autoFillSafetyOfficer,
 }: SMK3DataFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Record<string, any>>(
-    initialData?.data || {}
-  );
+  const [formData, setFormData] = useState<Record<string, any>>(() => {
+    const data = initialData?.data || {};
+    // Auto-fill safety officer if provided
+    if (autoFillSafetyOfficer && !isEdit) {
+      data.safetyOfficer = `${autoFillSafetyOfficer.name} - ${autoFillSafetyOfficer.id}`;
+    }
+    return data;
+  });
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [findingStatus, setFindingStatus] = useState<FindingStatus>(
     initialData?.findingStatus || "INPG"

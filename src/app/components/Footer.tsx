@@ -7,7 +7,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-10 md:gap-16 mb-10">
           <div>
             <div className="font-display font-bold text-lg uppercase text-white tracking-wider mb-4">
-              Safety And Emergency Management Department
+              ERM Department
               <span className="block font-normal text-[11px] text-[#c5c0bb] tracking-wider">
                 PT. QMB New Energy Materials
               </span>
@@ -106,7 +106,7 @@ export function Footer() {
         </div>
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-6 border-t border-[#3a3535]">
           <p className="text-xs text-[#6b6560]">
-            © 2025 Safety And Emergency Management Department. All rights reserved.
+            © 2025 ERM Department. All rights reserved.
           </p>
           <span className="font-display text-[11px] font-bold tracking-wide text-[#f7941d]">
             Compliant: PP No. 55/2010 • ISO 45001:2018

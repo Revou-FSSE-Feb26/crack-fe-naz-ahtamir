@@ -18,6 +18,10 @@ export async function GET(request: NextRequest) {
   const subSubElementId = searchParams.get("subSubElementId");
   const search = searchParams.get("search");
   const pendingApprovalOnly = searchParams.get("pendingApprovalOnly") === "true";
+  const tanggalDari = searchParams.get("tanggalDari");
+  const tanggalSampai = searchParams.get("tanggalSampai");
+  const statusFilter = searchParams.get("status");
+  const idKaryawan = searchParams.get("idKaryawan");
 
   let filteredData = smk3DataStore;
 
@@ -25,14 +29,45 @@ export async function GET(request: NextRequest) {
     filteredData = filteredData.filter(item => item.subSubElementId === subSubElementId);
   }
 
-  if (pendingApprovalOnly) {
-    filteredData = filteredData.filter(item => item.findingStatus === "pending_approval");
+  // User biasa hanya bisa lihat data sendiri
+  if (session.user.role === "user") {
+    filteredData = filteredData.filter(item => item.createdById === (session.user as any).idKaryawan);
+  }
+
+  // Filter pendingApprovalOnly dihapus karena tidak ada lagi status pending_approval
+  // Sekarang hanya ada OPEN, INPG, CLSD
+
+  if (tanggalDari) {
+    filteredData = filteredData.filter(item => {
+      const itemDate = item.data.tanggalInspeksi || item.createdAt;
+      return itemDate >= tanggalDari;
+    });
+  }
+
+  if (tanggalSampai) {
+    filteredData = filteredData.filter(item => {
+      const itemDate = item.data.tanggalInspeksi || item.createdAt;
+      return itemDate <= tanggalSampai;
+    });
+  }
+
+  if (statusFilter) {
+    filteredData = filteredData.filter(item => item.findingStatus === statusFilter);
+  }
+
+  if (idKaryawan) {
+    filteredData = filteredData.filter(item => 
+      item.createdById?.includes(idKaryawan) || 
+      item.createdBy.toLowerCase().includes(idKaryawan.toLowerCase())
+    );
   }
 
   if (search) {
     const searchLower = search.toLowerCase();
     filteredData = filteredData.filter(item =>
       item.title.toLowerCase().includes(searchLower) ||
+      item.createdBy.toLowerCase().includes(searchLower) ||
+      (item.createdById && item.createdById.toLowerCase().includes(searchLower)) ||
       JSON.stringify(item.data).toLowerCase().includes(searchLower)
     );
   }
@@ -49,7 +84,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const subSubElementId = formData.get("subSubElementId") as string;
     const title = formData.get("title") as string;
-    const findingStatus = (formData.get("findingStatus") as FindingStatus) || "INPG";
+    const findingStatus = (formData.get("findingStatus") as FindingStatus) || "OPEN";
     const approvalNote = formData.get("approvalNote") as string | null;
 
     if (!subSubElementId || !title) {
@@ -89,21 +124,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Tentukan findingStatus final
-    // CLSD → langsung simpan sebagai CLSD
-    // INPG → simpan sebagai pending_approval, tunggu atasan
-    const finalFindingStatus: FindingStatus =
-      findingStatus === "CLSD" ? "CLSD" : "pending_approval";
-
-    const approvalInfo =
-      findingStatus === "INPG"
-        ? {
-            requestedAt: new Date().toISOString(),
-            requestedBy: session.user.name || "Unknown",
-            note: approvalNote || undefined,
-          }
-        : undefined;
-
+    // Simpan langsung dengan status yang dikirim (OPEN/INPG/CLSD)
     const newEntry: SubSubElementData = {
       id: String(Date.now()),
       subSubElementId,
@@ -111,9 +132,9 @@ export async function POST(request: NextRequest) {
       data,
       files,
       status: "active",
-      findingStatus: finalFindingStatus,
-      approval: approvalInfo,
+      findingStatus: findingStatus, // Langsung pakai OPEN/INPG/CLSD
       createdBy: session.user.name || "Unknown",
+      createdById: (session.user as any).idKaryawan || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -126,20 +147,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH - Approval action (approve / reject) — khusus admin/atasan
+// PATCH - Approval action (approve / reject) atau submit_inpg
 export async function PATCH(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  if (session.user.role !== "admin" && session.user.role !== "supervisor") {
-    return NextResponse.json({ error: "Forbidden: Hanya admin/atasan yang dapat menyetujui" }, { status: 403 });
-  }
 
   try {
     const body = await request.json();
     const { id, action, approvalNote } = body as {
       id: string;
-      action: "approve" | "reject";
+      action: "approve" | "reject" | "submit_inpg";
       approvalNote?: string;
     };
 
@@ -152,44 +169,58 @@ export async function PATCH(request: NextRequest) {
 
     const entry = smk3DataStore[index];
 
-    if (entry.findingStatus !== "pending_approval") {
+    // Action: submit_inpg (user submit dari OPEN ke INPG)
+    if (action === "submit_inpg") {
+      if (entry.findingStatus !== "OPEN") {
+        return NextResponse.json(
+          { error: "Data ini sudah disubmit sebelumnya" },
+          { status: 400 }
+        );
+      }
+
+      smk3DataStore[index] = {
+        ...entry,
+        findingStatus: "INPG",
+        updatedAt: new Date().toISOString(),
+      };
+
+      return NextResponse.json({
+        message: "Data berhasil disubmit dengan status INPG",
+        data: smk3DataStore[index],
+      });
+    }
+
+    // Action: approve / reject (hanya admin/supervisor untuk CLSD)
+    // Workflow baru: INPG → CLSD dilakukan di page 7.1.7
+    if (session.user.role !== "admin" && session.user.role !== "supervisor") {
+      return NextResponse.json({ error: "Forbidden: Hanya admin/atasan yang dapat menutup temuan" }, { status: 403 });
+    }
+
+    if (entry.findingStatus !== "INPG") {
       return NextResponse.json(
-        { error: "Data ini tidak sedang menunggu persetujuan" },
+        { error: "Hanya temuan dengan status INPG yang bisa ditutup (CLSD)" },
         { status: 400 }
       );
     }
 
     if (action === "approve") {
+      // Approve = CLSD (temuan sudah diperbaiki dan ditutup)
       smk3DataStore[index] = {
         ...entry,
-        // Setelah diapprove, status temuan tetap INPG (belum ada perbaikan)
-        findingStatus: "INPG",
-        approval: {
-          ...entry.approval!,
-          approvedAt: new Date().toISOString(),
-          approvedBy: session.user.name || "Unknown",
-          approvalNote: approvalNote || undefined,
-        },
+        findingStatus: "CLSD",
         updatedAt: new Date().toISOString(),
       };
     } else {
-      // Reject → kembalikan ke pending_approval dengan info rejection
-      // Submitter bisa revisi dan submit ulang
+      // Reject = kembalikan ke INPG dengan catatan
       smk3DataStore[index] = {
         ...entry,
-        findingStatus: "pending_approval",
-        approval: {
-          ...entry.approval!,
-          rejectedAt: new Date().toISOString(),
-          rejectedBy: session.user.name || "Unknown",
-          rejectionNote: approvalNote || undefined,
-        },
+        findingStatus: "INPG",
         updatedAt: new Date().toISOString(),
       };
     }
 
     return NextResponse.json({
-      message: action === "approve" ? "Temuan disetujui" : "Temuan ditolak",
+      message: action === "approve" ? "Temuan ditutup (CLSD)" : "Temuan dikembalikan ke INPG",
       data: smk3DataStore[index],
     });
   } catch (error) {
