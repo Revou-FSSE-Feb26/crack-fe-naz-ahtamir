@@ -32,7 +32,9 @@ export default function DataPage() {
             <Link href="/smk3" className="text-[#c5c0bb] hover:text-[#f7941d] transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
             </Link>
-            <div className="font-barlow-condensed text-[11px] font-bold tracking-[0.2em] uppercase text-[#c5c0bb]">Dashboard</div>
+            <Link href="/smk3" className="font-barlow-condensed text-[11px] font-bold tracking-[0.2em] uppercase text-[#c5c0bb] hover:text-[#f7941d] transition-colors">
+              SMK3
+            </Link>
             <div className="text-[#c5c0bb]">/</div>
             <div className="font-barlow-condensed text-[11px] font-bold tracking-[0.2em] uppercase text-[#f7941d]">Elemen 10</div>
           </div>
