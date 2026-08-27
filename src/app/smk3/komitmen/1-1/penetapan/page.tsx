@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -22,7 +22,7 @@ interface KebijakanK3 {
 }
 
 export default function PenetapanKebijakanPage() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [kebijakanList, setKebijakanList] = useState<KebijakanK3[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,10 +43,10 @@ export default function PenetapanKebijakanPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!isAuthenticated && !isLoading) {
       router.push("/login");
     }
-    if (status === "authenticated") {
+    if (isAuthenticated) {
       fetchKebijakan();
     }
   }, [status, router]);
@@ -163,14 +163,14 @@ export default function PenetapanKebijakanPage() {
     setSelectedPdf(fileUrl);
   };
 
-  if (status === "loading" || loading) {
+  if (isLoading || loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (
     <>
       {/* Page Header */}
-      <div className="bg-[#231f20] py-[calc(72px+64px)] px-5 md:px-10 border-b-[4px] border-b-[#f15a22]">
+      <div className="bg-[#231f20] py-8 px-5 md:px-10 border-b-[4px] border-b-[#f15a22]">
         <div className="max-w-7xl mx-auto">
           {/* Breadcrumb */}
           <div className="flex items-center gap-3 mb-6 flex-wrap text-sm">

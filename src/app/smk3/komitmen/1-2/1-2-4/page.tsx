@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import { getFormConfig } from "@/data/formConfigs";
 import { SubSubElementData } from "@/types/subSubElement";
 
 export default function SubSubElement124Page() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [editData, setEditData] = useState<SubSubElementData | null>(null);
@@ -20,15 +20,15 @@ export default function SubSubElement124Page() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const formConfig = getFormConfig("1.2.4");
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!isAuthenticated && !isLoading) {
       router.push("/login");
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -46,7 +46,7 @@ export default function SubSubElement124Page() {
   return (
     <>
       {/* Page Header */}
-      <div className="bg-[#231f20] py-[calc(72px+64px)] px-5 md:px-10 border-b-[4px] border-b-[#f15a22]">
+      <div className="bg-[#231f20] py-8 px-5 md:px-10 border-b-[4px] border-b-[#f15a22]">
         <div className="max-w-7xl mx-auto">
           {/* Breadcrumb */}
           <div className="flex items-center gap-3 mb-6 flex-wrap">

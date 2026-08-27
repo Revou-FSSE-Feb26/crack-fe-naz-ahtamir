@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
@@ -93,25 +93,25 @@ const smk3Modules = [
 ];
 
 export default function SMK3Page() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!isAuthenticated && !isLoading) {
       router.push("/login");
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin = user?.role === "admin";
 
   return (
     <>
       {/* Page Header */}
-      <div className="bg-[#231f20] py-[calc(72px+64px)] px-5 md:px-10 border-b-[4px] border-b-[#f15a22]">
+      <div className="bg-[#231f20] py-10 px-5 md:px-10 border-b-[4px] border-b-[#f15a22]">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8">
             <div>
@@ -122,7 +122,7 @@ export default function SMK3Page() {
                 SMK3 <span className="text-[#f7941d]">Portal</span>
               </h1>
               <p className="text-[#c5c0bb] text-[14px] mt-4 max-w-2xl">
-                Selamat datang, <span className="text-[#f7941d] font-bold">{session?.user?.name}</span>
+                Selamat datang, <span className="text-[#f7941d] font-bold">{user?.name}</span>
               </p>
             </div>
             {isAdmin && (

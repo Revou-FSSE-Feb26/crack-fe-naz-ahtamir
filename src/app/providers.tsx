@@ -1,7 +1,16 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
+import { ToastContainer } from "@/app/components/ToastContainer";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  return (
+    <AuthProvider>
+      <NotificationProvider>
+        {children}
+        <ToastContainer />
+      </NotificationProvider>
+    </AuthProvider>
+  );
 }

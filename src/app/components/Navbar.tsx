@@ -3,38 +3,26 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 
-const publicLinks = [
+const navLinks = [
   { name: "Home", href: "/" },
-  { name: "About", href: "/about" },
-];
-
-const moreLinks = [
-  { name: "Programs", href: "/programs" },
-  { name: "Gallery", href: "/gallery" },
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Report", href: "/contact" },
+  { name: "Safety Complain", href: "/contact" },
 ];
 
 export function Navbar() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
 
-  const moreRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
 
   // Tutup dropdown saat klik di luar
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
       if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
         setAvatarOpen(false);
       }
@@ -46,7 +34,6 @@ export function Navbar() {
   // Tutup semua saat route berubah
   useEffect(() => {
     setMobileOpen(false);
-    setMoreOpen(false);
     setAvatarOpen(false);
   }, [pathname]);
 
@@ -57,9 +44,8 @@ export function Navbar() {
   }, [mobileOpen]);
 
   const handleLogout = async () => {
-    await signOut({ redirect: false });
+    await logout();
     router.push("/");
-    router.refresh();
   };
 
   const isActive = (href: string) =>
@@ -67,9 +53,8 @@ export function Navbar() {
       ? pathname === "/"
       : pathname === href || pathname.startsWith(href + "/");
 
-  const isAuthenticated = status === "authenticated";
-  const isAdmin = session?.user?.role === "admin";
-  const userInitial = session?.user?.name?.charAt(0).toUpperCase() ?? "U";
+  const isAdmin = user?.role === "admin";
+  const userInitial = user?.name?.charAt(0).toUpperCase() ?? "U";
 
   const linkClass = (href: string) =>
     `font-barlow-condensed text-[12px] tracking-[0.1em] uppercase px-3 py-2 transition-colors ${
@@ -109,127 +94,107 @@ export function Navbar() {
           {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-1">
 
-            {/* Public links */}
-            {publicLinks.map(link => (
+            {/* Nav links */}
+            {navLinks.map(link => (
               <Link key={link.href} href={link.href} className={linkClass(link.href)}>
                 {link.name}
               </Link>
             ))}
 
-            {/* More dropdown */}
-            <div className="relative" ref={moreRef}>
-              <button
-                onClick={() => setMoreOpen(prev => !prev)}
-                className={`flex items-center gap-1 font-barlow-condensed text-[12px]
-                            tracking-[0.1em] uppercase px-3 py-2 transition-colors
-                            ${moreLinks.some(l => isActive(l.href))
-                              ? "text-[#f15a22]"
-                              : "text-[#c5c0bb] hover:text-white"
-                            }`}
-              >
-                More
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12" height="12"
-                  viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2.5"
-                  strokeLinecap="round" strokeLinejoin="round"
-                  className={`transition-transform ${moreOpen ? "rotate-180" : ""}`}
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
-
-              {moreOpen && (
-                <div className="absolute top-full right-0 mt-2 w-48
-                                bg-[#231f20] border border-[#3a3535]
-                                shadow-lg py-1 z-50">
-                  {moreLinks.map(link => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`block px-4 py-2.5 font-barlow-condensed text-[12px]
-                                  tracking-[0.08em] uppercase transition-colors
-                                  ${isActive(link.href)
-                                    ? "text-[#f15a22] bg-white/5"
-                                    : "text-[#c5c0bb] hover:text-white hover:bg-white/5"
-                                  }`}
-                    >
-                      {link.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Divider */}
             <div className="w-px h-5 bg-[#3a3535] mx-2" />
 
-            {/* SMK3 — hanya jika login */}
-            {isAuthenticated && (
-              <Link
-                href="/smk3"
-                className={`font-barlow-condensed text-[12px] tracking-[0.1em]
-                            uppercase px-3 py-1.5 border transition-colors
-                            ${isActive("/smk3")
-                              ? "border-[#f15a22] text-[#f15a22] bg-[#f15a22]/10"
-                              : "border-[#f15a22] text-[#f15a22] hover:bg-[#f15a22] hover:text-white"
-                            }`}
-              >
-                SMK3
-              </Link>
-            )}
-
             {/* Auth area */}
             {isAuthenticated ? (
-              <div className="relative ml-2" ref={avatarRef}>
-                <button
-                  onClick={() => setAvatarOpen(prev => !prev)}
-                  className="w-8 h-8 rounded-full bg-[#f15a22] flex items-center
-                             justify-center text-white font-barlow-condensed
-                             font-bold text-sm hover:bg-[#f7941d] transition-colors"
+              <div className="flex items-center gap-2 ml-1">
+                {/* Tombol Dashboard — jelas dan mudah ditemukan */}
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-1.5 font-barlow-condensed text-[12px]
+                             tracking-[0.08em] uppercase px-3 py-1.5 bg-[#f15a22]
+                             text-white hover:bg-[#f7941d] transition-colors"
                 >
-                  {userInitial}
-                </button>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                  Dashboard
+                </Link>
 
-                {avatarOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-48
-                                  bg-[#231f20] border border-[#3a3535]
-                                  shadow-lg py-1 z-50">
-                    {/* User info */}
-                    <div className="px-4 py-2.5 border-b border-[#3a3535]">
-                      <div className="font-barlow-condensed font-bold text-[12px]
-                                      text-white uppercase tracking-wide truncate">
-                        {session?.user?.name}
-                      </div>
-                      <div className="text-[11px] text-[#6b6560] truncate">
-                        {session?.user?.email}
-                      </div>
-                    </div>
+                {/* Avatar dropdown */}
+                <div className="relative" ref={avatarRef}>
+                  <button
+                    onClick={() => setAvatarOpen(prev => !prev)}
+                    className="w-8 h-8 rounded-full bg-[#3a3535] border border-[#5a5555] flex items-center
+                               justify-center text-white font-barlow-condensed
+                               font-bold text-sm hover:border-[#f15a22] transition-colors"
+                  >
+                    {userInitial}
+                  </button>
 
-                    {isAdmin && (
+                  {avatarOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-52
+                                    bg-[#231f20] border border-[#3a3535]
+                                    shadow-lg py-1 z-50">
+                      {/* User info */}
+                      <div className="px-4 py-2.5 border-b border-[#3a3535]">
+                        <div className="font-barlow-condensed font-bold text-[12px]
+                                        text-white uppercase tracking-wide truncate">
+                          {user?.name}
+                        </div>
+                        <div className="text-[11px] text-[#6b6560] truncate">
+                          {user?.role} · {user?.email}
+                        </div>
+                      </div>
+
                       <Link
-                        href="/admin"
+                        href="/dashboard"
                         className="flex items-center gap-2 px-4 py-2.5
                                    font-barlow-condensed text-[12px] tracking-[0.08em]
-                                   uppercase text-[#f15a22] hover:bg-white/5
-                                   transition-colors"
+                                   uppercase text-[#c5c0bb] hover:text-white
+                                   hover:bg-white/5 transition-colors"
                       >
-                        Admin Panel
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        Dashboard
                       </Link>
-                    )}
 
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 w-full px-4 py-2.5
-                                 font-barlow-condensed text-[12px] tracking-[0.08em]
-                                 uppercase text-[#c5c0bb] hover:text-white
-                                 hover:bg-white/5 transition-colors"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                )}
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          className="flex items-center gap-2 px-4 py-2.5
+                                     font-barlow-condensed text-[12px] tracking-[0.08em]
+                                     uppercase text-[#f15a22] hover:bg-white/5
+                                     transition-colors"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/>
+                          </svg>
+                          Admin Panel
+                        </Link>
+                      )}
+
+                      <div className="border-t border-[#3a3535] mt-1 pt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-2 w-full px-4 py-2.5
+                                     font-barlow-condensed text-[12px] tracking-[0.08em]
+                                     uppercase text-[#c5c0bb] hover:text-white
+                                     hover:bg-white/5 transition-colors"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                          </svg>
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <Link
@@ -285,10 +250,10 @@ export function Navbar() {
                 </div>
                 <div className="overflow-hidden">
                   <div className="font-barlow-condensed font-bold text-sm text-white truncate">
-                    {session?.user?.name}
+                    {user?.name}
                   </div>
                   <div className="text-[11px] text-[#6b6560] truncate">
-                    {session?.user?.email}
+                    {user?.email}
                   </div>
                 </div>
               </div>
@@ -297,7 +262,7 @@ export function Navbar() {
 
           {/* Nav links */}
           <div className="px-3 space-y-0.5">
-            {publicLinks.map(link => (
+            {navLinks.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -312,56 +277,25 @@ export function Navbar() {
               </Link>
             ))}
 
-            {/* More section */}
-            <div className="pt-2 pb-1 px-4">
-              <div className="font-barlow-condensed text-[10px] tracking-[0.2em]
-                              uppercase text-[#6b6560]">
-                More
-              </div>
-            </div>
-            {moreLinks.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`block font-barlow-condensed font-semibold text-sm
-                            tracking-wider uppercase py-2.5 px-4 transition-all
-                            ${isActive(link.href)
-                              ? "bg-[#f15a22] text-white"
-                              : "text-[#c5c0bb] hover:bg-white/5 hover:text-white"
-                            }`}
-              >
-                {link.name}
-              </Link>
-            ))}
-
-            {/* SMK3 - hanya jika login */}
-            {isAuthenticated && (
-              <>
-                <div className="pt-2 pb-1 px-4">
-                  <div className="font-barlow-condensed text-[10px] tracking-[0.2em]
-                                  uppercase text-[#6b6560]">
-                    Internal
-                  </div>
-                </div>
-                <Link
-                  href="/smk3"
-                  className={`block font-barlow-condensed font-semibold text-sm
-                              tracking-wider uppercase py-2.5 px-4 transition-all
-                              ${isActive("/smk3")
-                                ? "bg-[#f15a22] text-white"
-                                : "text-[#f15a22] hover:bg-[#f15a22]/10"
-                              }`}
-                >
-                  SMK3
-                </Link>
-              </>
-            )}
           </div>
 
           {/* Auth */}
           <div className="mt-4 pt-4 border-t border-[#3a3535] px-3 space-y-0.5">
             {isAuthenticated ? (
               <>
+                {/* Tombol Dashboard — prominent */}
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 font-barlow-condensed font-semibold
+                             text-sm tracking-wider uppercase py-2.5 px-4
+                             bg-[#f15a22] text-white hover:bg-[#f7941d] transition-all rounded-sm mb-2"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                  Masuk ke Dashboard
+                </Link>
                 {isAdmin && (
                   <Link
                     href="/admin"

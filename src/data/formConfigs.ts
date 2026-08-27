@@ -27,16 +27,18 @@ export const getFormConfig = (subSubElementId: string): SubSubElementFormConfig 
 // Specific form configurations for sub-sub elements that need custom fields
 // For elements not listed here, the default template will be used
 export const formConfigs: Record<string, SubSubElementFormConfig> = {
-  // ELEMEN 1: KOMITMEN - Kebijakan K3
-  "1.1.1": {
-    subSubElementId: "1.1.1",
+  // K3 Policy (Safety Compliance)
+  "sc-k3-policy": {
+    subSubElementId: "sc-k3-policy",
     fields: [
-      { name: "nomorKebijakan", label: "Nomor Kebijakan", type: "text", required: true },
-      { name: "tanggalPenetapan", label: "Tanggal Penetapan", type: "date", required: true },
-      { name: "penandatangan", label: "Penandatangan", type: "text", required: true },
-      { name: "jabatan", label: "Jabatan", type: "text", required: true },
-      { name: "isiKebijakan", label: "Isi Kebijakan", type: "textarea", required: true, rows: 6 },
-      { name: "dokumenKebijakan", label: "Dokumen Kebijakan (PDF)", type: "file", accept: ".pdf", maxSize: 5, required: true },
+      { name: "nomorDokumen", label: "Nomor Dokumen", type: "text", required: true },
+      { name: "judulKebijakan", label: "Judul Kebijakan", type: "text", required: true },
+      { name: "tanggalTerbit", label: "Tanggal Terbit", type: "date", required: true },
+      { name: "tanggalReview", label: "Tanggal Review Berikutnya", type: "date" },
+      { name: "statusDokumen", label: "Status Dokumen", type: "select", required: true, options: [{ value: "Aktif", label: "Aktif" }, { value: "Draft", label: "Draft" }, { value: "Revisi", label: "Revisi" }, { value: "Kadaluarsa", label: "Kadaluarsa" }] },
+      { name: "penanggungJawab", label: "Penanggung Jawab", type: "text" },
+      { name: "keterangan", label: "Keterangan", type: "textarea", rows: 4 },
+      { name: "dokumen", label: "Dokumen Kebijakan (PDF)", type: "file", accept: ".pdf", maxSize: 5, required: true },
     ],
   },
 
@@ -78,8 +80,21 @@ export const formConfigs: Record<string, SubSubElementFormConfig> = {
       name: "lokasiUtama",
       label: "Lokasi Utama",
       labelCn: "主要地點",
-      type: "text",
+      type: "select",
       required: true,
+      options: [
+        { value: "140_hektar", label: "140 HEKTAR (140亩)" },
+        { value: "500_hektar", label: "500 HEKTAR (500亩-第二选矿厂)" },
+        { value: "86_selatan", label: "86 SELATAN (南86)" },
+        { value: "86_utara", label: "86 UTARA (86区域)" },
+        { value: "area_57", label: "AREA 57 (57平区域)" },
+        { value: "imip_9", label: "IMIP 9 (新九区)" },
+        { value: "imip_8", label: "IMIP 8 (新八区)" },
+        { value: "km_3", label: "KM 3 (3公里)" },
+        { value: "km_6", label: "KM 6 (6公里)" },
+        { value: "jetty", label: "JETTY (中转罐、码头)" },
+        { value: "lainnya", label: "Lainnya" },
+      ],
     },
     {
       name: "areaInspeksiSpesifik",

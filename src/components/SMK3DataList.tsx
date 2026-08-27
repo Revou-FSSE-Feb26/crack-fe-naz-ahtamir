@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SubSubElementData, FindingStatus } from "@/types/subSubElement";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SMK3DataListProps {
   subSubElementId: string;
@@ -16,6 +16,12 @@ const findingStatusConfig: Record<
   FindingStatus,
   { label: string; bg: string; text: string; dot: string }
 > = {
+  OPEN: {
+    label: "OPEN",
+    bg: "bg-red-100",
+    text: "text-red-700",
+    dot: "bg-red-500",
+  },
   CLSD: {
     label: "CLSD",
     bg: "bg-green-100",
@@ -49,7 +55,7 @@ export default function SMK3DataList({
   onView,
   refreshTrigger,
 }: SMK3DataListProps) {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [dataList, setDataList] = useState<SubSubElementData[]>([]);
   const [filteredData, setFilteredData] = useState<SubSubElementData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,9 +74,9 @@ export default function SMK3DataList({
   const [isApproving, setIsApproving] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
 
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin = user?.role === "admin";
   const isSupervisor =
-    session?.user?.role === "supervisor" || session?.user?.role === "admin";
+    user?.role === "supervisor" || user?.role === "admin";
 
   const fetchData = async () => {
     setIsLoading(true);

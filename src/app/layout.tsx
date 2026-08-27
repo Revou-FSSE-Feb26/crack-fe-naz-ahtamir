@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/app/components/Navbar";
-import { Footer } from "@/app/components/Footer";
+import { PublicLayout } from "@/app/components/PublicLayout";
 import { Providers } from "@/app/providers";
 
 const montserrat = Montserrat({
@@ -12,8 +11,8 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Life Above Everything. No Safety No Work.",
-  description: "Safety And Emergency Management Department- PT. QMB New Energy Materials",
+  title: "Life Above All. No Safety No Work.",
+  description: "Safety And Emergency Management Department - PT. QMB New Energy Materials",
 };
 
 export default function RootLayout({
@@ -22,15 +21,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${montserrat.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${montserrat.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#faf9f7] text-[#231f20] font-montserrat overflow-x-hidden">
         <Providers>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <PublicLayout>{children}</PublicLayout>
         </Providers>
       </body>
     </html>

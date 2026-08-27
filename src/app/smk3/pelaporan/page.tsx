@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
@@ -13,22 +13,22 @@ const subElements = [
 ];
 
 export default function PelaporanPage() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!isAuthenticated && !isLoading) {
       router.push("/login");
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (
     <>
-      <div className="bg-[#231f20] py-[calc(72px+64px)] px-5 md:px-10 border-b-[4px] border-b-[#f7941d]">
+      <div className="bg-[#231f20] py-8 px-5 md:px-10 border-b-[4px] border-b-[#f7941d]">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <Link href="/smk3" className="text-[#c5c0bb] hover:text-[#f7941d] transition-colors">

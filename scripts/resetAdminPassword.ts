@@ -12,7 +12,7 @@ async function resetAdminPassword() {
     const hashedPassword = await bcrypt.hash("admin123", 10);
 
     // Update user dengan idKaryawan "82400944"
-    const result = await mongoose.connection.db.collection("users").updateOne(
+    const result = await mongoose.connection.db!.collection("users").updateOne(
       { idKaryawan: "82400944" },
       { 
         $set: { 
@@ -33,7 +33,7 @@ async function resetAdminPassword() {
     }
 
     // Verifikasi
-    const user = await mongoose.connection.db.collection("users").findOne(
+    const user = await mongoose.connection.db!.collection("users").findOne(
       { idKaryawan: "82400944" }
     );
 

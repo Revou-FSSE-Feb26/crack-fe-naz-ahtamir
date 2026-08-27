@@ -1,65 +1,56 @@
-// src/app/api/jobdesk/acceptance/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { connectDB } from "@/lib/mongodb";
-import mongoose from "mongoose";
 
-// Definisikan schema JobAcceptance (sementara di sini saja)
-const JobAcceptanceSchema = new mongoose.Schema({
-  nama: { type: String, required: true },
-  departemen: { type: String, required: true },
-  jabatan: { type: String, required: true },
-  jobdesk: { type: Object, required: true },
-  signature: { type: String, required: true },
-  acceptedAt: { type: Date, default: Date.now },
-  userId: { type: String, default: "" },
-});
+/**
+ * /api/jobdesk/acceptance — in-memory store.
+ * MongoDB has been removed; data persists only for the lifetime of the
+ * server process (replace with a NestJS endpoint when persistent storage
+ * is needed).
+ */
 
-// Hindari re-compile model jika sudah ada
-const JobAcceptance = mongoose.models.JobAcceptance || mongoose.model("JobAcceptance", JobAcceptanceSchema);
+interface AcceptanceRecord {
+  id: string;
+  nama: string;
+  departemen: string;
+  jabatan: string;
+  jobdesk: object;
+  signature: string;
+  acceptedAt: string;
+  userId: string;
+}
 
-export async function POST(req: NextRequest) {
-  const session = await getServerSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+let acceptanceStore: AcceptanceRecord[] = [];
 
+export async function GET(_request: NextRequest) {
+  const sorted = [...acceptanceStore].sort(
+    (a, b) => new Date(b.acceptedAt).getTime() - new Date(a.acceptedAt).getTime()
+  );
+  return NextResponse.json({ records: sorted });
+}
+
+export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-    const body = await req.json();
-    const { nama, departemen, jabatan, jobdesk, signature, acceptedAt } = body;
+    const body = await request.json();
+    const { nama, departemen, jabatan, jobdesk, signature, acceptedAt, userId } = body;
 
-    const newRecord = new JobAcceptance({
+    if (!nama || !departemen || !jabatan || !signature) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const record: AcceptanceRecord = {
+      id:         String(Date.now()),
       nama,
       departemen,
       jabatan,
-      jobdesk,
+      jobdesk:    jobdesk ?? {},
       signature,
-      acceptedAt: new Date(acceptedAt),
-      userId: session.user?.id || "",
-    });
+      acceptedAt: acceptedAt ?? new Date().toISOString(),
+      userId:     userId ?? "",
+    };
 
-    await newRecord.save();
-
-    return NextResponse.json({ success: true });
+    acceptanceStore.push(record);
+    return NextResponse.json({ success: true, record }, { status: 201 });
   } catch (error) {
     console.error("Error saving job acceptance:", error);
     return NextResponse.json({ error: "Gagal menyimpan data" }, { status: 500 });
-  }
-}
-
-export async function GET(req: NextRequest) {
-  const session = await getServerSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    await connectDB();
-    const records = await JobAcceptance.find({}).sort({ acceptedAt: -1 });
-    return NextResponse.json({ records });
-  } catch (error) {
-    console.error("Error fetching records:", error);
-    return NextResponse.json({ error: "Gagal mengambil data" }, { status: 500 });
   }
 }

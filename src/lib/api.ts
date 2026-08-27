@@ -1,239 +1,409 @@
 /**
- * API Client Utilities
- * Wrapper functions untuk fetch dengan proxy support
+ * API Client Utility
+ * Handles authenticated requests to the backend API
  */
 
-import { proxyFetch, getProxyBaseUrl } from "./proxy";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-/**
- * API Response type
- */
-export type ApiResponse<T = any> = {
+export interface ApiResponse<T = any> {
+  success: boolean;
   data?: T;
   error?: string;
   message?: string;
-  status: number;
+}
+
+export interface AuthResponse {
+  user: {
+    id: string;
+    idKaryawan: string;
+    nama: string;
+    jabatan?: string;
+    role: 'admin' | 'supervisor' | 'user';
+    departemen?: string;
+    divisi?: string;
+    pusat?: string;
+    perusahaan?: string;
+    approved: boolean;
+    supervisorId?: string | null;
+    tanggalLahir?: string | null;
+    tempatLahir?: string | null;
+    agama?: string | null;
+    jenisKelamin?: string | null;
+    pendidikan?: string | null;
+    namaSekolah?: string | null;
+    jurusan?: string | null;
+    tanggalMulaiKerja?: string | null;
+    umur?: number | null;
+    masaKerja?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+  token: string;
+}
+
+/**
+ * Get stored JWT token from localStorage
+ */
+export function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('smk3_token');
+}
+
+/**
+ * Store JWT token in localStorage
+ */
+export function storeToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('smk3_token', token);
+}
+
+/**
+ * Clear stored JWT token
+ */
+export function clearToken(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('smk3_token');
+}
+
+/**
+ * Generic fetch wrapper with auth header and error handling
+ */
+async function fetchWithAuth<T = any>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = getStoredToken();
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (options.headers && typeof options.headers === 'object') {
+    Object.assign(headers, options.headers);
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  // Handle 401 Unauthorized - token may be expired
+  if (response.status === 401) {
+    clearToken();
+    // Redirect to login if in browser
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    throw new Error('Unauthorized. Please login again.');
+  }
+
+  // Handle 403 Forbidden
+  if (response.status === 403) {
+    throw new Error('Anda tidak memiliki akses untuk melakukan operasi ini');
+  }
+
+  // Handle other errors
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || `API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Authentication endpoints
+ */
+export const authApi = {
+  login: async (idKaryawan: string, password: string): Promise<AuthResponse> => {
+    return fetchWithAuth('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ idKaryawan, password }),
+    });
+  },
+
+  logout: async (): Promise<void> => {
+    // Clear token from storage
+    clearToken();
+    // You can optionally call backend logout endpoint here if needed
+    // await fetchWithAuth('/auth/logout', { method: 'POST' }).catch(() => {});
+  },
 };
 
 /**
- * API Client class untuk standardisasi API calls
+ * SMK3 Data (Findings) endpoints
  */
-export class ApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || getProxyBaseUrl("api");
-  }
-
-  /**
-   * GET request
-   */
-  async get<T = any>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    try {
-      const response = await proxyFetch(path, {
-        ...options,
-        method: "GET",
+export const findingsApi = {
+  getAll: async (filters?: {
+    subSubElementId?: string;
+    findingStatus?: string;
+    createdById?: string;
+    department?: string;
+  }): Promise<any[]> => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
       });
-
-      const data = await response.json();
-
-      return {
-        data: response.ok ? data : undefined,
-        error: !response.ok ? data.error || data.message : undefined,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : "Request failed",
-        status: 500,
-      };
     }
-  }
+    return fetchWithAuth(`/smk3-data?${params.toString()}`);
+  },
 
-  /**
-   * POST request
-   */
-  async post<T = any>(
-    path: string,
-    body?: any,
-    options?: RequestInit
-  ): Promise<ApiResponse<T>> {
-    try {
-      const response = await proxyFetch(path, {
-        ...options,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...options?.headers,
-        },
-        body: JSON.stringify(body),
-      });
+  getById: async (id: string): Promise<any> => {
+    return fetchWithAuth(`/smk3-data/${id}`);
+  },
 
-      const data = await response.json();
+  create: async (data: any): Promise<any> => {
+    return fetchWithAuth('/smk3-data', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 
-      return {
-        data: response.ok ? data : undefined,
-        error: !response.ok ? data.error || data.message : undefined,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : "Request failed",
-        status: 500,
-      };
-    }
-  }
+  update: async (id: string, data: any): Promise<any> => {
+    return fetchWithAuth(`/smk3-data/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 
-  /**
-   * PUT request
-   */
-  async put<T = any>(
-    path: string,
-    body?: any,
-    options?: RequestInit
-  ): Promise<ApiResponse<T>> {
-    try {
-      const response = await proxyFetch(path, {
-        ...options,
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...options?.headers,
-        },
-        body: JSON.stringify(body),
-      });
+  updateStatus: async (
+    id: string,
+    findingStatus: string,
+    approvalData?: any
+  ): Promise<any> => {
+    return fetchWithAuth(`/smk3-data/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        findingStatus,
+        ...approvalData,
+      }),
+    });
+  },
 
-      const data = await response.json();
-
-      return {
-        data: response.ok ? data : undefined,
-        error: !response.ok ? data.error || data.message : undefined,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : "Request failed",
-        status: 500,
-      };
-    }
-  }
-
-  /**
-   * PATCH request
-   */
-  async patch<T = any>(
-    path: string,
-    body?: any,
-    options?: RequestInit
-  ): Promise<ApiResponse<T>> {
-    try {
-      const response = await proxyFetch(path, {
-        ...options,
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...options?.headers,
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      return {
-        data: response.ok ? data : undefined,
-        error: !response.ok ? data.error || data.message : undefined,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : "Request failed",
-        status: 500,
-      };
-    }
-  }
-
-  /**
-   * DELETE request
-   */
-  async delete<T = any>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    try {
-      const response = await proxyFetch(path, {
-        ...options,
-        method: "DELETE",
-      });
-
-      const data = await response.json();
-
-      return {
-        data: response.ok ? data : undefined,
-        error: !response.ok ? data.error || data.message : undefined,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : "Request failed",
-        status: 500,
-      };
-    }
-  }
-
-  /**
-   * Upload file dengan FormData
-   */
-  async upload<T = any>(
-    path: string,
-    formData: FormData,
-    options?: RequestInit
-  ): Promise<ApiResponse<T>> {
-    try {
-      const response = await proxyFetch(path, {
-        ...options,
-        method: "POST",
-        body: formData,
-        // Don't set Content-Type, browser will set it with boundary
-      });
-
-      const data = await response.json();
-
-      return {
-        data: response.ok ? data : undefined,
-        error: !response.ok ? data.error || data.message : undefined,
-        status: response.status,
-      };
-    } catch (error) {
-      return {
-        error: error instanceof Error ? error.message : "Upload failed",
-        status: 500,
-      };
-    }
-  }
-}
-
-// Export singleton instance
-export const api = new ApiClient();
+  delete: async (id: string): Promise<any> => {
+    return fetchWithAuth(`/smk3-data/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
 
 /**
- * Convenience functions untuk quick usage
+ * Notifications endpoints
  */
-export const apiGet = <T = any>(path: string, options?: RequestInit) =>
-  api.get<T>(path, options);
+export const notificationsApi = {
+  getAll: async (filters?: { isRead?: boolean; limit?: number }): Promise<any[]> => {
+    const params = new URLSearchParams();
+    if (filters) {
+      if (filters.isRead !== undefined) params.append('isRead', String(filters.isRead));
+      if (filters.limit) params.append('limit', String(filters.limit));
+    }
+    return fetchWithAuth(`/notifications?${params.toString()}`);
+  },
 
-export const apiPost = <T = any>(path: string, body?: any, options?: RequestInit) =>
-  api.post<T>(path, body, options);
+  markAsRead: async (id: string): Promise<any> => {
+    return fetchWithAuth(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    });
+  },
 
-export const apiPut = <T = any>(path: string, body?: any, options?: RequestInit) =>
-  api.put<T>(path, body, options);
+  markAllAsRead: async (): Promise<any> => {
+    return fetchWithAuth(`/notifications/read-all`, {
+      method: 'PATCH',
+    });
+  },
+};
 
-export const apiPatch = <T = any>(path: string, body?: any, options?: RequestInit) =>
-  api.patch<T>(path, body, options);
+/**
+ * File upload endpoint
+ */
+export const uploadsApi = {
+  uploadFile: async (file: File, subSubElementId: string): Promise<{ filePath: string; filename: string }> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/uploads`;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('subSubElementId', subSubElementId);
 
-export const apiDelete = <T = any>(path: string, options?: RequestInit) =>
-  api.delete<T>(path, options);
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-export const apiUpload = <T = any>(
-  path: string,
-  formData: FormData,
-  options?: RequestInit
-) => api.upload<T>(path, formData, options);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
 
-export default api;
+    // Handle 401 Unauthorized
+    if (response.status === 401) {
+      clearToken();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new Error('Unauthorized. Please login again.');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `Upload error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+};
+
+/**
+ * Records API — dipakai untuk Safety Compliance, Accident Prevention, Safety Competency
+ * Menggunakan endpoint /smk3-data yang sama dengan findings,
+ * dibedakan oleh field subElementId (kategori record).
+ */
+export type RecordCategory =
+  | 'safety-compliance'
+  | 'accident-prevention'
+  | 'safety-competency';
+
+export interface SafetyRecord {
+  id: string;
+  subElementId: string;
+  title: string;
+  findingStatus: 'INPG' | 'CLSD';
+  data: Record<string, any>;
+  createdById: string;
+  createdByName: string;
+  approvedByName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const recordsApi = {
+  getAll: async (
+    category: RecordCategory,
+    search?: string
+  ): Promise<SafetyRecord[]> => {
+    const params = new URLSearchParams({ subElementId: category });
+    if (search) params.append('search', search);
+    return fetchWithAuth(`/smk3-data?${params.toString()}`);
+  },
+
+  getById: async (id: string): Promise<SafetyRecord> => {
+    return fetchWithAuth(`/smk3-data/${id}`);
+  },
+
+  create: async (
+    category: RecordCategory,
+    payload: { title: string; data: Record<string, any> }
+  ): Promise<SafetyRecord> => {
+    return fetchWithAuth('/smk3-data', {
+      method: 'POST',
+      body: JSON.stringify({
+        subElementId: category,
+        title: payload.title,
+        data: payload.data,
+      }),
+    });
+  },
+
+  update: async (
+    id: string,
+    payload: { title: string; data: Record<string, any> }
+  ): Promise<SafetyRecord> => {
+    return fetchWithAuth(`/smk3-data/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return fetchWithAuth(`/smk3-data/${id}`, { method: 'DELETE' });
+  },
+
+  // ── Upload with File ──────────────────────────────────────────────────────────
+
+  createWithFile: async (
+    category: RecordCategory,
+    formData: FormData
+  ): Promise<SafetyRecord> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/smk3-data`;
+
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    // Jangan set Content-Type! Browser akan set boundary otomatis untuk FormData
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    // Handle 401
+    if (response.status === 401) {
+      clearToken();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new Error('Unauthorized. Please login again.');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `API error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  updateWithFile: async (
+    id: string,
+    formData: FormData
+  ): Promise<SafetyRecord> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/smk3-data/${id}`;
+
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: formData,
+    });
+
+    if (response.status === 401) {
+      clearToken();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new Error('Unauthorized. Please login again.');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `API error: ${response.status}`);
+    }
+
+    return response.json();
+  },  
+};
+
+/**
+ * Error handler utility
+ */
+export function getApiErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Terjadi kesalahan. Silakan coba lagi.';
+}

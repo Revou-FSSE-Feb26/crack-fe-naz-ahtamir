@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import Link from "next/link";
 import SMK3DataForm from "@/components/SMK3DataForm";
 import SMK3DataList from "@/components/SMK3DataList";
@@ -12,7 +11,7 @@ import { getFormConfig } from "@/data/formConfigs";
 import { SubSubElementData } from "@/types/subSubElement";
 
 export default function SubSubElement121Page() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [editData, setEditData] = useState<SubSubElementData | null>(null);
@@ -20,15 +19,15 @@ export default function SubSubElement121Page() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const formConfig = getFormConfig("1.2.1");
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (!isAuthenticated && !isLoading) {
       router.push("/login");
     }
-  }, [status, router]);
+  }, [isAuthenticated, isLoading, router]);
 
-  if (status === "loading") {
+  if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 

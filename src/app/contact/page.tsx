@@ -7,10 +7,10 @@ export default function ContactPage() {
       <div className="bg-[#231f20] py-[calc(72px+64px)] px-5 md:px-10 border-b-[4px] border-b-[#f15a22]">
         <MaxWidth>
           <div className="font-barlow-condensed text-[11px] font-bold tracking-[0.2em] uppercase text-[#f15a22] mb-4">
-            Contact & Report
+            Safety Complain
           </div>
           <h1 className="font-barlow-condensed font-extrabold text-white uppercase leading-[0.95] tracking-[-0.01em] text-[clamp(48px,7vw,88px)]">
-            Contact Us<br />& Report
+            Safety<br />Complain
           </h1>
         </MaxWidth>
       </div>
