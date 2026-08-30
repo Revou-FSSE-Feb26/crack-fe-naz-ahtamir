@@ -224,6 +224,19 @@ export const config: CrudPageConfig = {
       placeholder: 'PIC name',
     },
 
+    // ── Status Temuan ─────────────────────────────────────────────────────
+    {
+      key: 'findingStatus',
+      label: 'Finding Status (Status Temuan)',
+      type: 'select',
+      required: true,
+      showInTable: true,
+      options: [
+        { value: 'INPG', label: 'INPG — Perbaikan Belum Selesai' },
+        { value: 'CLSD', label: 'CLSD — Perbaikan Selesai' },
+      ],
+    },
+
     // ── Foto Perbaikan ────────────────────────────────────────────────────
     {
       key: 'dokumentasiPerbaikan',

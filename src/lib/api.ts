@@ -175,7 +175,13 @@ export const findingsApi = {
   updateStatus: async (
     id: string,
     findingStatus: string,
-    approvalData?: any
+    approvalData?: {
+      approvalStatus?: 'ACC' | 'TACC';
+      approvalNote?: string;
+      picId?: string;
+      followUpNote?: string;
+      followUpDeadline?: string;
+    }
   ): Promise<any> => {
     return fetchWithAuth(`/smk3-data/${id}/status`, {
       method: 'PATCH',

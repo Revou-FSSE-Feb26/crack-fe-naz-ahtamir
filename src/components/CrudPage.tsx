@@ -179,6 +179,14 @@ function FormModal({
     fields.forEach((f) => {
       // Jangan validasi field yang disembunyikan oleh showWhen
       if (!isFieldVisible(f)) return;
+      
+      // Validasi wajib foto perbaikan jika status CLSD
+      if (f.key === 'dokumentasiPerbaikan' && data['findingStatus'] === 'CLSD') {
+        if (!files[f.key]) {
+          e[f.key] = 'Wajib upload foto perbaikan untuk status CLSD';
+        }
+      }
+      
       if (f.required && f.type !== 'file' && !data[f.key]?.trim()) {
         e[f.key] = `${f.label} wajib diisi`;
       }
@@ -300,6 +308,46 @@ function FormModal({
 
         {/* body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {/* Finding Status - untuk approval pages */}
+          {enableApproval && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">
+                Status Temuan <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={data['findingStatus'] ?? 'INPG'}
+                onChange={(e) => setData((p) => ({ ...p, 'findingStatus': e.target.value }))}
+                className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors ${
+                  errors['findingStatus'] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
+                }`}
+              >
+                <option value="INPG">INPG — Perbaikan Belum Selesai (tidak wajib upload foto)</option>
+                <option value="CLSD">CLSD — Perbaikan Selesai (wajib upload foto)</option>
+              </select>
+              <p className="text-[11px] text-[#6b6560] mt-1">
+                Pilih <strong>CLSD</strong> jika Anda mengklaim perbaikan sudah selesai (wajib upload foto perbaikan).
+                Pilih <strong>INPG</strong> jika perbaikan masih dalam proses.
+              </p>
+            </div>
+          )}
+
+          {/* Conditional warning untuk status CLSD */}
+          {enableApproval && data['findingStatus'] === 'CLSD' && (
+            <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-[12px] text-amber-800">
+              <div className="flex items-start gap-2">
+                <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div>
+                  <p className="font-semibold mb-1">⚠️ Perhatian</p>
+                  <p>Anda memilih status <strong>CLSD</strong> (Perbaikan Selesai).<br/>
+                  <span className="font-semibold">Wajib upload foto perbaikan</span> untuk temuan ini. Supervisor akan mereview foto sebelum melakukan approval.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Judul Record — hanya untuk generic pages */}
           {!isK3Policy && !enableApproval && (
             <div>
@@ -363,7 +411,9 @@ function FormModal({
                       type="file"
                       accept={f.accept || '.pdf,.doc,.docx,.jpg,.jpeg,.png'}
                       onChange={handleFileChange(f.key)}
-                      className="w-full px-3.5 py-2.5 text-[14px] border border-[#c5c0bb] rounded-xl file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#f15a22] file:text-white hover:file:bg-[#d44d1a] focus:outline-none"
+                      className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#f15a22] file:text-white hover:file:bg-[#d44d1a] focus:outline-none ${
+                        errors[f.key] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
+                      }`}
                     />
                     {/* Image preview untuk file yang baru dipilih */}
                     {files[f.key] && files[f.key].type.startsWith('image/') && (
