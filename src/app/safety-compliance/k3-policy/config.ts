@@ -15,8 +15,8 @@ export const config: CrudPageConfig = {
       required: true,
       showInTable: true,
       options: [
-        { label: 'KEBIJAKAN UMUM', value: 'KEBIJAKAN UMUM' },
-        { label: 'KEBIJAKAN KHUSUS', value: 'KEBIJAKAN KHUSUS' },
+        { label: 'KEBIJAKAN UMUM', value: 'UMUM' },
+        { label: 'KEBIJAKAN KHUSUS', value: 'KHUSUS' },
       ],
     },
     // 2. Judul Kebijakan

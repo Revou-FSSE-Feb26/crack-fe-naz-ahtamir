@@ -1,4 +1,11 @@
 'use client';
-import { CrudPage } from '@/components/CrudPage';
-import { config } from '@/app/accident-prevention/safety-inspection/config';
-export default function Page() { return <CrudPage config={config} />; }
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function SafetyInspectionPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/accident-prevention/safety-inspection/non-conformity');
+  }, [router]);
+  return null;
+}

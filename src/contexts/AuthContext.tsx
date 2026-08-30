@@ -107,10 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (idKaryawan: string, password: string) => {
+    console.log('🔵 AuthContext.login() START');
     setIsLoading(true);
     try {
       const response = await authApi.login(idKaryawan, password);
+      console.log('🔵 AuthContext: API response received:', { userId: response.user.id, role: response.user.role });
+      
       storeToken(response.token);
+      console.log('🔵 AuthContext: Token stored');
       
       // Map backend user to frontend User interface
       const mappedUser: User = {
@@ -124,19 +128,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: response.user.email || `${response.user.idKaryawan}@smk3.local`, // Fallback
       };
       
+      console.log('🔵 AuthContext: About to setUser()');
       setUser(mappedUser);
       
-      console.log('✅ Login successful:', {
-        id: mappedUser.id,
-        idKaryawan: mappedUser.idKaryawan,
-        nama: mappedUser.nama,
-        role: mappedUser.role,
-      });
+      // Set loading false AFTER user is set
+      setIsLoading(false);
+      
+      console.log('✅ Login successful - user and isLoading updated');
     } catch (error) {
       console.error('❌ Login failed:', error);
-      throw error; // Re-throw untuk di-catch di login page
-    } finally {
       setIsLoading(false);
+      throw error; // Re-throw untuk di-catch di login page
     }
   }, []);
 

@@ -399,6 +399,85 @@ export const recordsApi = {
 };
 
 /**
+ * K3 Policy API — dedicated endpoint for K3 Policy records
+ */
+export const k3PolicyApi = {
+  getAll: async (): Promise<any[]> => {
+    return fetchWithAuth('/k3-policy');
+  },
+
+  getById: async (id: string): Promise<any> => {
+    return fetchWithAuth(`/k3-policy/${id}`);
+  },
+
+  createWithFile: async (formData: FormData): Promise<any> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/k3-policy/with-file`;
+
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (response.status === 401) {
+      clearToken();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new Error('Unauthorized. Please login again.');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `API error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  updateWithFile: async (id: string, formData: FormData): Promise<any> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/k3-policy/with-file/${id}`;
+
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: formData,
+    });
+
+    if (response.status === 401) {
+      clearToken();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new Error('Unauthorized. Please login again.');
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `API error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return fetchWithAuth(`/k3-policy/${id}`, { method: 'DELETE' });
+  },
+};
+
+/**
  * Error handler utility
  */
 export function getApiErrorMessage(error: unknown): string {
@@ -407,3 +486,129 @@ export function getApiErrorMessage(error: unknown): string {
   }
   return 'Terjadi kesalahan. Silakan coba lagi.';
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Master List Documents
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Department {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export type JenisDokumen = 'MANUAL' | 'SOP' | 'INSTRUKSI_KERJA' | 'FORMULIR';
+export type StatusDokumen = 'ASLI' | 'SALINAN' | 'ASLI-REVISI' | 'SALINAN-REVISI';
+export type StatusDistribusi = 'TERKENDALI' | 'TIDAK_TERKENDALI';
+export type StatusValidasi = 'BERLAKU' | 'TIDAK_BERLAKU' | 'PEMUSNAHAN';
+
+export interface Document {
+  id: string;
+  departemenId: string;
+  departemen: Department;
+  jenisDokumen: JenisDokumen;
+  namaDokumen: string;
+  nomorDokumen: string;
+  revisi?: string | null;
+  tanggalTerbit: string;
+  statusDokumen: StatusDokumen;
+  statusDistribusi: StatusDistribusi;
+  statusValidasi: StatusValidasi;
+  parentId?: string | null;
+  parent?: Pick<Document, 'id' | 'namaDokumen' | 'nomorDokumen' | 'jenisDokumen'> | null;
+  children?: Document[];
+  fileUrl?: string | null;
+  createdById: string;
+  createdBy: { id: string; nama: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateDocumentDto {
+  departemenId: string;
+  jenisDokumen: JenisDokumen;
+  namaDokumen: string;
+  nomorDokumen: string;
+  revisi?: string;
+  tanggalTerbit: string;
+  statusDokumen: StatusDokumen;
+  statusDistribusi: StatusDistribusi;
+  statusValidasi: StatusValidasi;
+  parentId?: string | null;
+}
+
+/** Departments API */
+export const departmentsApi = {
+  getAll: async (): Promise<Department[]> => {
+    return fetchWithAuth('/departments');
+  },
+};
+
+/** Documents API */
+export const documentsApi = {
+  /** Semua dokumen (flat list) */
+  getAll: async (params?: { departemenId?: string; jenisDokumen?: string }): Promise<Document[]> => {
+    const qs = new URLSearchParams();
+    if (params?.departemenId) qs.append('departemenId', params.departemenId);
+    if (params?.jenisDokumen) qs.append('jenisDokumen', params.jenisDokumen);
+    return fetchWithAuth(`/documents?${qs.toString()}`);
+  },
+
+  /** Dokumen yang bisa jadi parent, filter by jenisDokumen + departemenId */
+  getParentCandidates: async (jenisDokumen: JenisDokumen, departemenId: string): Promise<Document[]> => {
+    const parentJenis: Record<JenisDokumen, JenisDokumen | null> = {
+      MANUAL: null,
+      SOP: 'MANUAL',
+      INSTRUKSI_KERJA: 'SOP',
+      FORMULIR: 'INSTRUKSI_KERJA',
+    };
+    const pj = parentJenis[jenisDokumen];
+    if (!pj) return [];
+    const qs = new URLSearchParams({ jenisDokumen: pj, departemenId });
+    return fetchWithAuth(`/documents?${qs.toString()}`);
+  },
+
+  getById: async (id: string): Promise<Document> => {
+    return fetchWithAuth(`/documents/${id}`);
+  },
+
+  create: async (dto: CreateDocumentDto): Promise<Document> => {
+    return fetchWithAuth('/documents', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  },
+
+  createWithFile: async (formData: FormData): Promise<Document> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/documents/with-file`;
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'POST', headers, body: formData });
+    if (res.status === 401) { clearToken(); window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
+    return res.json();
+  },
+
+  update: async (id: string, dto: Partial<CreateDocumentDto>): Promise<Document> => {
+    return fetchWithAuth(`/documents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    });
+  },
+
+  updateWithFile: async (id: string, formData: FormData): Promise<Document> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/documents/with-file/${id}`;
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'PUT', headers, body: formData });
+    if (res.status === 401) { clearToken(); window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
+    return res.json();
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return fetchWithAuth(`/documents/${id}`, { method: 'DELETE' });
+  },
+};

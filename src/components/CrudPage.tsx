@@ -15,7 +15,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { recordsApi, SafetyRecord } from '@/lib/api';
+import { recordsApi, k3PolicyApi, findingsApi, SafetyRecord } from '@/lib/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +32,11 @@ export interface CrudField {
   showInDetail?: boolean;
   /** Untuk tipe file: ekstensi yang diizinkan, misal '.pdf,.docx' */
   accept?: string;
+  /**
+   * Conditional display — field hanya muncul jika field lain punya value tertentu.
+   * Contoh: { field: 'tipeTemuan', value: 'hazard' }
+   */
+  showWhen?: { field: string; value: string };
 }
 
 export interface CrudPageConfig {
@@ -45,6 +50,13 @@ export interface CrudPageConfig {
   parentLabel: string;
   /** Fields form & tabel */
   fields: CrudField[];
+  /**
+   * Jika true: aktifkan sistem approval INPG/CLSD.
+   * - Semua record baru masuk dengan status INPG (In Progress — menunggu approval atasan).
+   * - Supervisor/admin dapat menutup temuan (→ CLSD) dari detail panel.
+   * - User biasa tidak bisa mengubah status sendiri.
+   */
+  enableApproval?: boolean;
 }
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -79,6 +91,23 @@ function Badge({ value }: { value: string }) {
   );
 }
 
+function ApprovalBadge({ status }: { status: 'INPG' | 'CLSD' | string }) {
+  if (status === 'CLSD') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+        CLSD — Closed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+      INPG — Pending Approval
+    </span>
+  );
+}
+
 // ── Form Modal ────────────────────────────────────────────────────────────────
 
 interface FormModalProps {
@@ -89,6 +118,10 @@ interface FormModalProps {
   fields: CrudField[];
   modalTitle: string;
   initialValues?: { title: string; data: Record<string, any> } | null;
+  /** Jika true: tidak perlu field 'title', dan kirim flat fields ke backend */
+  isK3Policy?: boolean;
+  /** Jika true: mode approval — record selalu mulai INPG, judul diambil dari field data */
+  enableApproval?: boolean;
 }
 
 function FormModal({
@@ -99,11 +132,16 @@ function FormModal({
   fields,
   modalTitle,
   initialValues,
+  isK3Policy = false,
+  enableApproval = false,
 }: FormModalProps) {
   const [title, setTitle] = useState('');
   const [data, setData] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  // Support multiple file fields (dokumentasiHazard, dokumentasiPerbaikan, etc.)
+  const [files, setFiles] = useState<Record<string, File>>({});
+  // Legacy single-file support
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
 
@@ -112,20 +150,36 @@ function FormModal({
       setTitle(initialValues?.title ?? '');
       const d: Record<string, string> = {};
       fields.forEach((f) => {
-        d[f.key] = String(initialValues?.data?.[f.key] ?? '');
+        if (isK3Policy && f.type === 'file') {
+          d[f.key] = String((initialValues?.data as any)?.fileUrl ?? '');
+        } else {
+          d[f.key] = String(initialValues?.data?.[f.key] ?? '');
+        }
       });
       setData(d);
       setErrors({});
       setFile(null);
+      setFiles({});
       setFilePreview(null);
     }
-  }, [isOpen, initialValues, fields]);
+  }, [isOpen, initialValues, fields, isK3Policy]);
+
+  // ── showWhen evaluation ──
+  const isFieldVisible = (f: CrudField): boolean => {
+    if (!f.showWhen) return true;
+    return data[f.showWhen.field] === f.showWhen.value;
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!title.trim()) e.title = 'Judul tidak boleh kosong';
+    // K3 Policy dan approval pages tidak punya field 'title' terpisah
+    if (!isK3Policy && !enableApproval && !title.trim()) {
+      e.title = 'Judul tidak boleh kosong';
+    }
     fields.forEach((f) => {
-      if (f.required && !data[f.key]?.trim()) {
+      // Jangan validasi field yang disembunyikan oleh showWhen
+      if (!isFieldVisible(f)) return;
+      if (f.required && f.type !== 'file' && !data[f.key]?.trim()) {
         e[f.key] = `${f.label} wajib diisi`;
       }
     });
@@ -138,36 +192,85 @@ function FormModal({
     if (!validate()) return;
     setSaving(true);
     try {
-      if (file) {
+      if (isK3Policy) {
+        // K3 Policy: flat fields sebagai FormData
+        const formData = new FormData();
+        fields.forEach((f) => {
+          if (f.type === 'file') return;
+          if (data[f.key] !== undefined && data[f.key] !== '') {
+            formData.append(f.key, data[f.key]);
+          }
+        });
+        if (file) formData.append('file', file);
+        await onSubmitFormData(formData);
+
+      } else if (enableApproval) {
+        // Approval mode: kirim sebagai FormData — backend expects subElementId + title + data + files
+        const formData = new FormData();
+        // Auto-generate title dari field pertama yang terisi, atau dari deskripsi
+        const autoTitle =
+          data['deskripsiKetidaksesuaian'] ||
+          data['judulKebijakan'] ||
+          data['areaInspeksiSpesifik'] ||
+          data['lokasiUtama'] ||
+          'Record Baru';
+        formData.append('title', autoTitle.slice(0, 120));
+        formData.append('data', JSON.stringify(
+          // Hanya sertakan field yang visible (respek showWhen)
+          Object.fromEntries(
+            Object.entries(data).filter(([k]) => {
+              const field = fields.find((f) => f.key === k);
+              return field ? isFieldVisible(field) : true;
+            })
+          )
+        ));
+        // Append semua files (dokumentasiHazard, dokumentasiPerbaikan, dst.)
+        Object.entries(files).forEach(([fieldKey, fileObj]) => {
+          formData.append(fieldKey, fileObj);
+        });
+        // findingStatus selalu INPG untuk record baru
+        formData.append('findingStatus', 'INPG');
+        await onSubmitFormData(formData);
+
+      } else if (Object.keys(files).length > 0 || file) {
+        // Generic record dengan file
         const formData = new FormData();
         formData.append('title', title);
         formData.append('data', JSON.stringify(data));
-        formData.append('file', file);
+        if (file) formData.append('file', file);
+        Object.entries(files).forEach(([k, f]) => formData.append(k, f));
         await onSubmitFormData(formData);
+
       } else {
+        // Generic record tanpa file
         await onSubmit({ title: title.trim(), data });
       }
       onClose();
-    } catch (err) {
-      // error handling dilakukan di parent
+    } catch (err: any) {
+      // error sudah dihandle di parent via showToast
     } finally {
       setSaving(false);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (fieldKey: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
-    if (selected) {
-      setFile(selected);
-      if (selected.type.startsWith('image/')) {
-        setFilePreview(URL.createObjectURL(selected));
-      } else {
-        setFilePreview(null);
-      }
+    if (!selected) return;
+    // Support multiple file fields
+    setFiles((prev) => ({ ...prev, [fieldKey]: selected }));
+    // Legacy single-file preview
+    setFile(selected);
+    if (selected.type.startsWith('image/')) {
+      setFilePreview(URL.createObjectURL(selected));
+    } else {
+      setFilePreview(null);
     }
   };
 
   if (!isOpen) return null;
+
+  // Fields yang perlu dirender — filter showWhen secara reaktif
+  const visibleFields = fields.filter(isFieldVisible);
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
@@ -176,10 +279,7 @@ function FormModal({
         {/* header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5e0db] flex-shrink-0">
           <h2 className="font-bold text-[15px] text-[#231f20]">{modalTitle}</h2>
-          <button
-            onClick={onClose}
-            className="text-[#6b6560] hover:text-[#231f20] p-1"
-          >
+          <button onClick={onClose} className="text-[#6b6560] hover:text-[#231f20] p-1">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -187,109 +287,123 @@ function FormModal({
           </button>
         </div>
 
+        {/* Approval mode notice */}
+        {enableApproval && (
+          <div className="mx-6 mt-4 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[12px] text-amber-700 flex items-start gap-2 flex-shrink-0">
+            <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span>Record baru akan masuk status <strong>INPG — Pending Approval</strong>. Supervisor/admin perlu menutup temuan setelah perbaikan selesai.</span>
+          </div>
+        )}
+
         {/* body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          {/* title field */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">
-              Judul Record <span className="text-red-500">*</span>
-            </label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Judul singkat yang mendeskripsikan record ini"
-              className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors ${
-                errors.title ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
-              }`}
-            />
-            {errors.title && <p className="text-red-500 text-[11px] mt-1">{errors.title}</p>}
-          </div>
-
-          {/* dynamic fields */}
-          {fields.map((f) => (
-            <div key={f.key}>
+          {/* Judul Record — hanya untuk generic pages */}
+          {!isK3Policy && !enableApproval && (
+            <div>
               <label className="block text-[11px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">
-                {f.label}
-                {f.required && <span className="text-red-500 ml-0.5">*</span>}
+                Judul Record <span className="text-red-500">*</span>
               </label>
-
-              {f.type === 'textarea' && (
-                <textarea
-                  rows={3}
-                  value={data[f.key] ?? ''}
-                  placeholder={f.placeholder}
-                  onChange={(e) => setData((p) => ({ ...p, [f.key]: e.target.value }))}
-                  className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors resize-none ${
-                    errors[f.key] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
-                  }`}
-                />
-              )}
-
-              {f.type === 'select' && (
-                <select
-                  value={data[f.key] ?? ''}
-                  onChange={(e) => setData((p) => ({ ...p, [f.key]: e.target.value }))}
-                  className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors ${
-                    errors[f.key] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
-                  }`}
-                >
-                  <option value="">-- Pilih {f.label} --</option>
-                  {f.options?.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {f.type === 'file' && (
-                <div>
-                  <input
-                    type="file"
-                    accept={f.accept || '.pdf,.doc,.docx,.jpg,.jpeg,.png'}
-                    onChange={handleFileChange}
-                    className="w-full px-3.5 py-2.5 text-[14px] border border-[#c5c0bb] rounded-xl file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#f15a22] file:text-white hover:file:bg-[#d44d1a] focus:outline-none"
-                  />
-                  {filePreview && (
-                    <div className="mt-2">
-                      <img
-                        src={filePreview}
-                        alt="Preview"
-                        className="max-h-20 rounded border"
-                      />
-                    </div>
-                  )}
-                  {data[f.key] && !file && (
-                    <p className="text-[11px] text-[#6b6560] mt-1">
-                      File saat ini:{' '}
-                      <a
-                        href={data[f.key]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#f15a22] hover:underline"
-                      >
-                        {data[f.key]}
-                      </a>
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {f.type !== 'textarea' && f.type !== 'select' && f.type !== 'file' && (
-                <input
-                  type={f.type}
-                  value={data[f.key] ?? ''}
-                  placeholder={f.placeholder}
-                  onChange={(e) => setData((p) => ({ ...p, [f.key]: e.target.value }))}
-                  className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors ${
-                    errors[f.key] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
-                  }`}
-                />
-              )}
-
-              {errors[f.key] && <p className="text-red-500 text-[11px] mt-1">{errors[f.key]}</p>}
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Judul singkat yang mendeskripsikan record ini"
+                className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors ${
+                  errors.title ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
+                }`}
+              />
+              {errors.title && <p className="text-red-500 text-[11px] mt-1">{errors.title}</p>}
             </div>
-          ))}
+          )}
+
+          {/* Dynamic fields — hanya render field yang visible (showWhen) */}
+          {fields.map((f) => {
+            // Evaluasi showWhen — sembunyikan field jika kondisi tidak terpenuhi
+            if (!isFieldVisible(f)) return null;
+
+            return (
+              <div key={f.key}>
+                <label className="block text-[11px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">
+                  {f.label}
+                  {f.required && <span className="text-red-500 ml-0.5">*</span>}
+                </label>
+
+                {f.type === 'textarea' && (
+                  <textarea
+                    rows={3}
+                    value={data[f.key] ?? ''}
+                    placeholder={f.placeholder}
+                    onChange={(e) => setData((p) => ({ ...p, [f.key]: e.target.value }))}
+                    className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors resize-none ${
+                      errors[f.key] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
+                    }`}
+                  />
+                )}
+
+                {f.type === 'select' && (
+                  <select
+                    value={data[f.key] ?? ''}
+                    onChange={(e) => setData((p) => ({ ...p, [f.key]: e.target.value }))}
+                    className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors ${
+                      errors[f.key] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
+                    }`}
+                  >
+                    <option value="">-- Select {f.label} --</option>
+                    {f.options?.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                )}
+
+                {f.type === 'file' && (
+                  <div>
+                    <input
+                      type="file"
+                      accept={f.accept || '.pdf,.doc,.docx,.jpg,.jpeg,.png'}
+                      onChange={handleFileChange(f.key)}
+                      className="w-full px-3.5 py-2.5 text-[14px] border border-[#c5c0bb] rounded-xl file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#f15a22] file:text-white hover:file:bg-[#d44d1a] focus:outline-none"
+                    />
+                    {/* Image preview untuk file yang baru dipilih */}
+                    {files[f.key] && files[f.key].type.startsWith('image/') && (
+                      <div className="mt-2">
+                        <img
+                          src={URL.createObjectURL(files[f.key])}
+                          alt="Preview"
+                          className="max-h-24 rounded-lg border border-[#e5e0db] object-cover"
+                        />
+                      </div>
+                    )}
+                    {/* Tampilkan link file existing saat edit */}
+                    {data[f.key] && !files[f.key] && (
+                      <p className="text-[11px] text-[#6b6560] mt-1">
+                        File saat ini:{' '}
+                        <a href={data[f.key]} target="_blank" rel="noopener noreferrer"
+                          className="text-[#f15a22] hover:underline">
+                          Lihat file
+                        </a>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {f.type !== 'textarea' && f.type !== 'select' && f.type !== 'file' && (
+                  <input
+                    type={f.type}
+                    value={data[f.key] ?? ''}
+                    placeholder={f.placeholder}
+                    onChange={(e) => setData((p) => ({ ...p, [f.key]: e.target.value }))}
+                    className={`w-full px-3.5 py-2.5 text-[14px] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f15a22]/30 focus:border-[#f15a22] transition-colors ${
+                      errors[f.key] ? 'border-red-400 bg-red-50' : 'border-[#c5c0bb]'
+                    }`}
+                  />
+                )}
+
+                {errors[f.key] && <p className="text-red-500 text-[11px] mt-1">{errors[f.key]}</p>}
+              </div>
+            );
+          })}
         </form>
 
         {/* footer */}
@@ -302,23 +416,15 @@ function FormModal({
             Batal
           </button>
           <button
-            onClick={handleSubmit}
+            onClick={(e) => handleSubmit(e as any)}
             disabled={saving}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold text-white bg-[#f15a22] rounded-xl hover:bg-[#d44d1a] transition-colors disabled:opacity-60"
           >
             {saving ? (
               <>
-                <svg
-                  className="animate-spin w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 Menyimpan...
               </>
@@ -341,27 +447,53 @@ interface DetailPanelProps {
   onEdit: () => void;
   isAdmin: boolean;
   onDelete: () => void;
+  isK3Policy?: boolean;
+  enableApproval?: boolean;
+  isSupervisor?: boolean;
+  onApprove?: (id: string) => Promise<void>;
 }
 
-function DetailPanel({ record, fields, onClose, onEdit, isAdmin, onDelete }: DetailPanelProps) {
+function DetailPanel({
+  record, fields, onClose, onEdit, isAdmin, onDelete,
+  isK3Policy = false, enableApproval = false, isSupervisor = false, onApprove,
+}: DetailPanelProps) {
+  const [approving, setApproving] = useState(false);
+
   if (!record) return null;
+
+  const findingStatus = (record as any).findingStatus as string | undefined;
+  const isInpg = findingStatus === 'INPG';
+  const canApprove = enableApproval && isSupervisor && isInpg && onApprove;
+
+  const handleApprove = async () => {
+    if (!onApprove) return;
+    if (!confirm('Tutup temuan ini sebagai CLSD? Pastikan perbaikan sudah selesai.')) return;
+    setApproving(true);
+    try {
+      await onApprove(record.id);
+      onClose();
+    } finally {
+      setApproving(false);
+    }
+  };
 
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/30 z-[450] transition-opacity duration-300"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/30 z-[450] transition-opacity duration-300" onClick={onClose} />
       <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[460] flex flex-col transition-transform duration-300 translate-x-0">
         {/* header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-[#e5e0db] flex-shrink-0">
           <div className="flex-1 min-w-0 pr-4">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-[#f15a22] mb-1">
-              Detail Record
-            </p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[#f15a22] mb-1">Detail Record</p>
             <h3 className="font-bold text-[16px] text-[#231f20] leading-snug">
-              {record.title}
+              {isK3Policy ? (record as any).judulKebijakan : record.title}
             </h3>
+            {/* Approval status badge */}
+            {enableApproval && findingStatus && (
+              <div className="mt-2">
+                <ApprovalBadge status={findingStatus} />
+              </div>
+            )}
           </div>
           <button onClick={onClose} className="text-[#6b6560] hover:text-[#231f20] flex-shrink-0 p-1">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -376,22 +508,33 @@ function DetailPanel({ record, fields, onClose, onEdit, isAdmin, onDelete }: Det
           {/* Meta */}
           <div className="grid grid-cols-2 gap-3 text-[13px]">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">
-                Dibuat Oleh
+              <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">Dibuat Oleh</p>
+              <p className="text-[#231f20] font-medium">
+                {isK3Policy ? (record as any).createdBy?.nama : record.createdByName || '—'}
               </p>
-              <p className="text-[#231f20] font-medium">{record.createdByName || '—'}</p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">
-                Tanggal Dibuat
-              </p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">Tanggal Dibuat</p>
               <p className="text-[#231f20] font-medium">{formatDate(record.createdAt)}</p>
             </div>
+            {/* Approval info */}
+            {enableApproval && findingStatus === 'CLSD' && (record as any).approvedByName && (
+              <>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">Disetujui Oleh</p>
+                  <p className="text-green-700 font-semibold">{(record as any).approvedByName}</p>
+                </div>
+                {(record as any).approvedAt && (
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">Tanggal Ditutup</p>
+                    <p className="text-[#231f20] font-medium">{formatDate((record as any).approvedAt)}</p>
+                  </div>
+                )}
+              </>
+            )}
             {record.updatedAt && record.updatedAt !== record.createdAt && (
               <div className="col-span-2">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">
-                  Terakhir Diubah
-                </p>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">Terakhir Diubah</p>
                 <p className="text-[#231f20]">{formatDate(record.updatedAt)}</p>
               </div>
             )}
@@ -399,35 +542,50 @@ function DetailPanel({ record, fields, onClose, onEdit, isAdmin, onDelete }: Det
 
           <hr className="border-[#e5e0db]" />
 
+          {/* Approval note jika ada */}
+          {enableApproval && (record as any).approvalNote && (
+            <div className="px-4 py-3 bg-green-50 rounded-xl border border-green-200">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-green-700 mb-1">Catatan Penutupan</p>
+              <p className="text-[13px] text-green-800">{(record as any).approvalNote}</p>
+            </div>
+          )}
+
           {/* Fields */}
           <div className="space-y-4">
             {fields
               .filter((f) => f.showInDetail !== false)
               .map((f) => {
-                const val = record.data?.[f.key];
+                const rawVal = isK3Policy
+                  ? (record as any)[f.key] ?? (record as any)['fileUrl']
+                  : record.data?.[f.key];
+                const val = (isK3Policy && f.type === 'file') ? (record as any)['fileUrl'] : rawVal;
+
                 if (!val) return null;
-                const isStatus = f.key.toLowerCase().includes('status');
+                const isStatusField = f.key.toLowerCase().includes('status');
                 const isFile = f.type === 'file';
+                const fileHref = isK3Policy && isFile
+                  ? `http://localhost:3001${String(val)}`
+                  : String(val);
+
                 return (
                   <div key={f.key}>
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">
-                      {f.label}
-                    </p>
-                    {isStatus ? (
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#a09b96] mb-0.5">{f.label}</p>
+                    {isStatusField ? (
                       <Badge value={String(val)} />
                     ) : isFile ? (
-                      <a
-                        href={String(val)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#f15a22] hover:underline text-[13px] font-medium"
-                      >
-                        📎 Lihat File
+                      <a href={fileHref} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[#f15a22] hover:underline text-[13px] font-medium">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                          <polyline points="7 10 12 15 17 10"/>
+                          <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        View File / Photo
                       </a>
                     ) : f.type === 'textarea' ? (
-                      <p className="text-[#231f20] text-[13px] leading-relaxed whitespace-pre-wrap">
-                        {String(val)}
-                      </p>
+                      <p className="text-[#231f20] text-[13px] leading-relaxed whitespace-pre-wrap">{String(val)}</p>
+                    ) : f.type === 'date' ? (
+                      <p className="text-[#231f20] font-medium text-[13px]">{formatDate(String(val))}</p>
                     ) : (
                       <p className="text-[#231f20] font-medium text-[13px]">{String(val)}</p>
                     )}
@@ -438,27 +596,49 @@ function DetailPanel({ record, fields, onClose, onEdit, isAdmin, onDelete }: Det
         </div>
 
         {/* footer actions */}
-        <div className="flex items-center gap-3 px-6 py-4 border-t border-[#e5e0db] flex-shrink-0">
-          <button
-            onClick={onEdit}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-[13px] font-semibold text-white bg-[#f15a22] rounded-xl hover:bg-[#d44d1a] transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            Edit
-          </button>
+        <div className="flex items-center gap-2 px-6 py-4 border-t border-[#e5e0db] flex-shrink-0 flex-wrap">
+          {/* Close Finding — supervisor/admin only, hanya jika INPG */}
+          {canApprove && (
+            <button
+              onClick={handleApprove}
+              disabled={approving}
+              className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-60"
+            >
+              {approving ? (
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+              Close Finding (CLSD)
+            </button>
+          )}
+          {/* Edit — hanya untuk INPG atau non-approval */}
+          {(!enableApproval || isInpg || isAdmin) && (
+            <button
+              onClick={onEdit}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 text-[13px] font-semibold text-white bg-[#f15a22] rounded-xl hover:bg-[#d44d1a] transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={onDelete}
               className="flex items-center justify-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4h6v2" />
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
               </svg>
               Hapus
             </button>
@@ -499,11 +679,15 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 export function CrudPage({ config }: { config: CrudPageConfig }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isSupervisor = user?.role === 'supervisor' || isAdmin;
+  const enableApproval = !!config.enableApproval;
 
   const [records, setRecords] = useState<SafetyRecord[]>([]);
   const [filtered, setFiltered] = useState<SafetyRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  // Approval filter: '' = semua, 'INPG' = pending, 'CLSD' = closed
+  const [statusFilter, setStatusFilter] = useState<'' | 'INPG' | 'CLSD'>('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<SafetyRecord | null>(null);
   const [detailRecord, setDetailRecord] = useState<SafetyRecord | null>(null);
@@ -518,8 +702,14 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await recordsApi.getAll(config.categoryId as any);
-      setRecords(data);
+      // Use dedicated K3 Policy API if categoryId is 'sc-k3-policy'
+      if (config.categoryId === 'sc-k3-policy') {
+        const data = await k3PolicyApi.getAll();
+        setRecords(data);
+      } else {
+        const data = await recordsApi.getAll(config.categoryId as any);
+        setRecords(data);
+      }
     } catch (err: any) {
       showToast(err.message || 'Gagal memuat data', 'error');
     } finally {
@@ -531,23 +721,38 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
     fetchRecords();
   }, [fetchRecords]);
 
-  // ── Search (client-side) ──
+  // ── Search + status filter (client-side) ──
   useEffect(() => {
-    if (!search.trim()) {
-      setFiltered(records);
-      return;
-    }
-    const q = search.toLowerCase();
-    setFiltered(
-      records.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          Object.values(r.data ?? {}).some((v) => String(v).toLowerCase().includes(q))
-      )
-    );
-  }, [search, records]);
+    let result = [...records];
 
-  // ── Add/Edit (tanpa file) ──
+    // Status filter (hanya untuk approval pages)
+    if (enableApproval && statusFilter) {
+      result = result.filter((r) => (r as any).findingStatus === statusFilter);
+    }
+
+    // Text search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((r) => {
+        if (config.categoryId === 'sc-k3-policy') {
+          const k3 = r as any;
+          return (
+            k3.judulKebijakan?.toLowerCase().includes(q) ||
+            k3.jenisKebijakan?.toLowerCase().includes(q) ||
+            k3.penandatangan?.toLowerCase().includes(q)
+          );
+        }
+        return (
+          r.title?.toLowerCase().includes(q) ||
+          Object.values(r.data ?? {}).some((v) => String(v).toLowerCase().includes(q))
+        );
+      });
+    }
+
+    setFiltered(result);
+  }, [search, statusFilter, records, config.categoryId, enableApproval]);
+
+  // ── Add/Edit (tanpa file) — hanya untuk non-K3 Policy ──
   const handleSubmit = async (values: { title: string; data: Record<string, string> }) => {
     if (editTarget) {
       await recordsApi.update(editTarget.id, values);
@@ -562,10 +767,20 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
   // ── Add/Edit (dengan file) ──
   const handleSubmitFormData = async (formData: FormData) => {
     if (editTarget) {
-      await recordsApi.updateWithFile(editTarget.id, formData);
+      // Use dedicated K3 Policy API if categoryId is 'sc-k3-policy'
+      if (config.categoryId === 'sc-k3-policy') {
+        await k3PolicyApi.updateWithFile(editTarget.id, formData);
+      } else {
+        await recordsApi.updateWithFile(editTarget.id, formData);
+      }
       showToast('Record berhasil diperbarui', 'success');
     } else {
-      await recordsApi.createWithFile(config.categoryId as any, formData);
+      // Use dedicated K3 Policy API if categoryId is 'sc-k3-policy'
+      if (config.categoryId === 'sc-k3-policy') {
+        await k3PolicyApi.createWithFile(formData);
+      } else {
+        await recordsApi.createWithFile(config.categoryId as any, formData);
+      }
       showToast('Record berhasil ditambahkan', 'success');
     }
     await fetchRecords();
@@ -573,14 +788,36 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
 
   // ── Delete ──
   const handleDelete = async (record: SafetyRecord) => {
-    if (!confirm(`Hapus record "${record.title}"?`)) return;
+    // For K3 Policy, use judulKebijakan as title
+    const displayTitle = config.categoryId === 'sc-k3-policy' 
+      ? (record as any).judulKebijakan 
+      : record.title;
+    
+    if (!confirm(`Hapus record "${displayTitle}"?`)) return;
     try {
-      await recordsApi.delete(record.id);
+      // Use dedicated K3 Policy API if categoryId is 'sc-k3-policy'
+      if (config.categoryId === 'sc-k3-policy') {
+        await k3PolicyApi.delete(record.id);
+      } else {
+        await recordsApi.delete(record.id);
+      }
       showToast('Record berhasil dihapus', 'success');
       if (detailRecord?.id === record.id) setDetailRecord(null);
       await fetchRecords();
     } catch (err: any) {
       showToast(err.message || 'Gagal menghapus', 'error');
+    }
+  };
+
+  // ── Approve (Close Finding: INPG → CLSD) — supervisor/admin only ──
+  const handleApprove = async (id: string) => {
+    try {
+      await findingsApi.updateStatus(id, 'CLSD');
+      showToast('Temuan berhasil ditutup (CLSD)', 'success');
+      await fetchRecords();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menutup temuan', 'error');
+      throw err; // re-throw agar DetailPanel bisa reset loading state
     }
   };
 
@@ -608,15 +845,7 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
           {/* Search */}
           <div className="relative flex-1">
-            <svg
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a09b96]"
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a09b96]" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -628,32 +857,52 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
               className="w-full pl-10 pr-4 py-2.5 text-[14px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] focus:ring-2 focus:ring-[#f15a22]/20 transition-colors"
             />
             {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a09b96] hover:text-[#231f20]"
-              >
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a09b96] hover:text-[#231f20]">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             )}
           </div>
           {/* Add button */}
           <button
-            onClick={() => {
-              setEditTarget(null);
-              setModalOpen(true);
-            }}
+            onClick={() => { setEditTarget(null); setModalOpen(true); }}
             className="flex items-center gap-2 px-5 py-2.5 bg-[#f15a22] text-white text-[13px] font-semibold rounded-xl hover:bg-[#d44d1a] transition-colors whitespace-nowrap"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Tambah Record
           </button>
         </div>
+
+        {/* Approval status filter tabs */}
+        {enableApproval && (
+          <div className="flex items-center gap-2 mb-4">
+            {(['', 'INPG', 'CLSD'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3.5 py-1.5 rounded-lg text-[12px] font-semibold transition-colors border ${
+                  statusFilter === s
+                    ? s === 'CLSD'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : s === 'INPG'
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-[#231f20] text-white border-[#231f20]'
+                    : 'bg-white text-[#6b6560] border-[#e5e0db] hover:border-[#c5c0bb]'
+                }`}
+              >
+                {s === '' ? 'All' : s === 'INPG' ? '⏳ Pending Approval' : '✅ Closed'}
+                {!loading && s !== '' && (
+                  <span className="ml-1.5 opacity-70">
+                    ({records.filter((r) => (r as any).findingStatus === s).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Info bar */}
         <div className="flex items-center justify-between mb-3 px-1 flex-wrap gap-2">
@@ -701,33 +950,31 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-[#e5e0db] bg-[#faf9f7]">
-                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide w-10">
-                      #
-                    </th>
-                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide">
-                      Judul
-                    </th>
+                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide w-10">#</th>
+                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide">Judul</th>
                     {tableCols.map((f) => (
-                      <th
-                        key={f.key}
-                        className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide hidden md:table-cell"
-                      >
+                      <th key={f.key} className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide hidden md:table-cell">
                         {f.label}
                       </th>
                     ))}
-                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide hidden lg:table-cell">
-                      Dibuat Oleh
-                    </th>
-                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide hidden lg:table-cell">
-                      Tanggal
-                    </th>
-                    <th className="text-right py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide">
-                      Aksi
-                    </th>
+                    {/* Status approval column */}
+                    {enableApproval && (
+                      <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide hidden md:table-cell">
+                        Status
+                      </th>
+                    )}
+                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide hidden lg:table-cell">Dibuat Oleh</th>
+                    <th className="text-left py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide hidden lg:table-cell">Tanggal</th>
+                    <th className="text-right py-3 px-4 text-[11px] font-semibold text-[#6b6560] uppercase tracking-wide">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f1f0ee]">
-                  {filtered.map((rec, idx) => (
+                  {filtered.map((rec, idx) => {
+                    const isK3Policy = config.categoryId === 'sc-k3-policy';
+                    const displayTitle = isK3Policy ? (rec as any).judulKebijakan : rec.title;
+                    const findingStatus = (rec as any).findingStatus as string | undefined;
+
+                    return (
                     <tr key={rec.id} className="hover:bg-[#faf9f7] transition-colors">
                       <td className="py-3 px-4 text-[#a09b96]">{idx + 1}</td>
                       <td className="py-3 px-4">
@@ -735,24 +982,17 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
                           onClick={() => setDetailRecord(rec)}
                           className="font-medium text-[#231f20] hover:text-[#f15a22] text-left transition-colors leading-snug"
                         >
-                          {rec.title}
+                          {displayTitle}
                         </button>
                       </td>
                       {tableCols.map((f) => {
-                        const val = rec.data?.[f.key];
+                        const val = isK3Policy ? (rec as any)[f.key] : rec.data?.[f.key];
                         const isStatus = f.key.toLowerCase().includes('status');
                         return (
-                          <td
-                            key={f.key}
-                            className="py-3 px-4 hidden md:table-cell max-w-[160px]"
-                          >
+                          <td key={f.key} className="py-3 px-4 hidden md:table-cell max-w-[160px]">
                             {val ? (
-                              isStatus ? (
-                                <Badge value={String(val)} />
-                              ) : (
-                                <span className="text-[#6b6560] truncate block">
-                                  {String(val)}
-                                </span>
+                              isStatus ? <Badge value={String(val)} /> : (
+                                <span className="text-[#6b6560] truncate block">{String(val)}</span>
                               )
                             ) : (
                               <span className="text-[#c5c0bb]">—</span>
@@ -760,8 +1000,14 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
                           </td>
                         );
                       })}
+                      {/* Approval status column */}
+                      {enableApproval && (
+                        <td className="py-3 px-4 hidden md:table-cell">
+                          {findingStatus ? <ApprovalBadge status={findingStatus} /> : <span className="text-[#c5c0bb]">—</span>}
+                        </td>
+                      )}
                       <td className="py-3 px-4 text-[#6b6560] hidden lg:table-cell">
-                        {rec.createdByName || '—'}
+                        {isK3Policy ? (rec as any).createdBy?.nama : rec.createdByName || '—'}
                       </td>
                       <td className="py-3 px-4 text-[#6b6560] hidden lg:table-cell whitespace-nowrap">
                         {formatDate(rec.createdAt)}
@@ -811,7 +1057,8 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -822,21 +1069,30 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
       {/* Form Modal */}
       <FormModal
         isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditTarget(null);
-        }}
+        onClose={() => { setModalOpen(false); setEditTarget(null); }}
         onSubmit={handleSubmit}
         onSubmitFormData={handleSubmitFormData}
         fields={config.fields}
         modalTitle={editTarget ? `Edit — ${config.title}` : `Tambah Record — ${config.title}`}
-        initialValues={editTarget ? { title: editTarget.title, data: editTarget.data } : null}
+        isK3Policy={config.categoryId === 'sc-k3-policy'}
+        enableApproval={enableApproval}
+        initialValues={
+          editTarget
+            ? config.categoryId === 'sc-k3-policy'
+              ? { title: (editTarget as any).judulKebijakan ?? '', data: editTarget as any }
+              : { title: editTarget.title, data: editTarget.data }
+            : null
+        }
       />
 
       {/* Detail Panel */}
       <DetailPanel
         record={detailRecord}
         fields={config.fields}
+        isK3Policy={config.categoryId === 'sc-k3-policy'}
+        enableApproval={enableApproval}
+        isSupervisor={isSupervisor}
+        onApprove={handleApprove}
         onClose={() => setDetailRecord(null)}
         onEdit={() => {
           setEditTarget(detailRecord);
@@ -844,9 +1100,7 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
           setModalOpen(true);
         }}
         isAdmin={isAdmin}
-        onDelete={() => {
-          if (detailRecord) handleDelete(detailRecord);
-        }}
+        onDelete={() => { if (detailRecord) handleDelete(detailRecord); }}
       />
 
       {/* Toast */}

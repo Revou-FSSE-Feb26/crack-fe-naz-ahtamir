@@ -15,7 +15,9 @@ interface SidebarProps {
 
 interface SubItem {
   label: string;
-  href: string;
+  href?: string;
+  /** Jika ada children, item ini jadi sub-group yang bisa di-expand */
+  children?: { label: string; href: string }[];
 }
 
 interface MenuItem {
@@ -54,7 +56,13 @@ const menuItems: MenuItem[] = [
       { label: 'Organization & Responsibility', href: '/safety-compliance/organization-responsibility' },
       { label: 'Worker Consultation (P2K3)', href: '/safety-compliance/worker-consultation' },
       { label: 'K3 Planning & Risk Assessment', href: '/safety-compliance/k3-planning' },
-      { label: 'Documentation & Records', href: '/safety-compliance/documentation-records' },
+      {
+        label: 'Documentation & Records',
+        children: [
+          { label: 'Master List Documents', href: '/safety-compliance/documentation-records/master-list-documents' },
+          { label: 'Safety Activities', href: '/safety-compliance/documentation-records/safety-activities' },
+        ],
+      },
       { label: 'Legal Compliance', href: '/safety-compliance/legal-compliance' },
       { label: 'Design & Change Management', href: '/safety-compliance/design-change-management' },
       { label: 'Procurement & Contractor Control', href: '/safety-compliance/procurement-contractor' },
@@ -77,7 +85,16 @@ const menuItems: MenuItem[] = [
       { label: 'Risk Control Implementation', href: '/accident-prevention/risk-control' },
       { label: 'Work Permit System', href: '/accident-prevention/work-permit' },
       { label: 'PPE Management', href: '/accident-prevention/ppe-management' },
-      { label: 'Safety Inspection', href: '/accident-prevention/safety-inspection' },
+      {
+        label: 'Safety Inspection',
+        children: [
+          { label: 'Non-Conformity', href: '/accident-prevention/safety-inspection/non-conformity' },
+          { label: 'Heavy Equipment', href: '/accident-prevention/safety-inspection/heavy-equipment' },
+          { label: 'Electrical Safety', href: '/accident-prevention/safety-inspection/electrical-safety' },
+          { label: 'Fire Safety', href: '/accident-prevention/safety-inspection/fire-safety' },
+          { label: 'General Workplace', href: '/accident-prevention/safety-inspection/general-workplace' },
+        ],
+      },
       { label: 'Safety Observation', href: '/accident-prevention/safety-observation' },
       { label: 'Workplace Monitoring', href: '/accident-prevention/workplace-monitoring' },
       { label: 'Equipment Safety', href: '/accident-prevention/equipment-safety' },
@@ -195,13 +212,31 @@ const menuItems: MenuItem[] = [
 export function Sidebar({ user, onLogout }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
   // Track which menus are open — default open the one matching current path
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     menuItems.forEach((item) => {
-      if (item.subItems?.some((s) => pathname.startsWith(s.href))) {
+      if (item.subItems?.some((s) =>
+        (s.href && pathname.startsWith(s.href)) ||
+        s.children?.some((c) => pathname.startsWith(c.href))
+      )) {
         initial[item.id] = true;
       }
+    });
+    return initial;
+  });
+
+  // Track sub-group expand (misal Documentation & Records)
+  const [openSubGroups, setOpenSubGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    menuItems.forEach((item) => {
+      item.subItems?.forEach((sub) => {
+        if (sub.children?.some((c) => pathname.startsWith(c.href))) {
+          initial[sub.label] = true;
+        }
+      });
     });
     return initial;
   });
@@ -210,10 +245,54 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
     setOpenMenus((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const toggleSubGroup = (label: string) => {
+    setOpenSubGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/');
 
   const userInitial = user?.name?.charAt(0).toUpperCase() ?? 'U';
+
+  // ── Search logic ──────────────────────────────────────────────────────────
+  const q = search.trim().toLowerCase();
+
+  // Filter menu items berdasarkan query pencarian
+  const filteredMenuItems = q
+    ? menuItems
+        .map((item) => {
+          // Cek apakah label menu utama cocok
+          const menuMatches = item.label.toLowerCase().includes(q);
+
+          // Filter sub-items yang cocok (termasuk children di sub-group)
+          const matchedSubs = item.subItems
+            ?.map((s) => {
+              // Sub-item biasa
+              if (!s.children) {
+                return s.label.toLowerCase().includes(q) ? s : null;
+              }
+              // Sub-group (punya children): filter children yang cocok
+              const matchedChildren = s.children.filter((c) =>
+                c.label.toLowerCase().includes(q)
+              );
+              const groupMatches = s.label.toLowerCase().includes(q);
+              if (groupMatches || matchedChildren.length > 0) {
+                return { ...s, children: groupMatches ? s.children : matchedChildren };
+              }
+              return null;
+            })
+            .filter(Boolean) as typeof item.subItems;
+
+          if (menuMatches || (matchedSubs && matchedSubs.length > 0)) {
+            return {
+              ...item,
+              subItems: menuMatches ? item.subItems : matchedSubs,
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) as MenuItem[]
+    : menuItems;
 
   return (
     <>
@@ -273,6 +352,38 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
           </button>
         </div>
 
+        {/* Search box */}
+        <div className="px-4 py-3 border-b border-[#3a3535] flex-shrink-0">
+          <div className="relative">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b6560] pointer-events-none"
+              width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari menu..."
+              className="w-full bg-[#2e2a2b] text-[#c5c0bb] text-[12px] placeholder-[#6b6560] pl-8 pr-7 py-2 rounded-lg border border-[#3a3535] focus:outline-none focus:border-[#f15a22] transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6b6560] hover:text-white transition-colors"
+                aria-label="Hapus pencarian"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Quick navigation links */}
         <div className="px-4 py-3 border-b border-[#3a3535] flex-shrink-0 space-y-1">
           <Link
@@ -300,12 +411,25 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
 
         {/* Menu */}
         <nav className="flex-1 px-3 py-2">
-          {menuItems.map((item, index) => {
-            const isDivider = index === 1; // divider before Safety Compliance
+          {filteredMenuItems.length === 0 && q && (
+            <div className="px-3 py-6 text-center">
+              <p className="text-[12px] text-[#6b6560]">Tidak ada menu yang cocok</p>
+              <p className="text-[11px] text-[#4a4545] mt-1">&ldquo;{search}&rdquo;</p>
+            </div>
+          )}
+          {filteredMenuItems.map((item, index) => {
+            // Sembunyikan divider jika sedang search
+            const isDivider = !q && index === filteredMenuItems.findIndex(i => i.id === 'safety-compliance');
             const isMenuActive =
               item.href
                 ? isActive(item.href)
-                : item.subItems?.some((s) => isActive(s.href));
+                : item.subItems?.some((s) =>
+                    (s.href ? isActive(s.href) : false) ||
+                    s.children?.some((c) => isActive(c.href))
+                  );
+
+            // Saat ada query: paksa buka semua menu yang masuk hasil filter
+            const isOpen = q ? true : openMenus[item.id];
 
             return (
               <React.Fragment key={item.id}>
@@ -330,7 +454,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                   ) : (
                     // Collapsible menu
                     <button
-                      onClick={() => toggleMenu(item.id)}
+                      onClick={() => !q && toggleMenu(item.id)}
                       className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[13px] font-medium transition-colors text-left ${
                         isMenuActive
                           ? 'bg-[rgba(241,90,34,0.18)] text-[#f15a22] font-semibold'
@@ -339,14 +463,16 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                     >
                       <span className="w-5 flex justify-center flex-shrink-0">{item.icon}</span>
                       <span className="flex-1">{item.label}</span>
-                      <svg
-                        width="11" height="11"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                        className={`flex-shrink-0 text-[#6b6560] transition-transform duration-200 ${openMenus[item.id] ? 'rotate-90' : ''}`}
-                      >
-                        <path d="m9 18 6-6-6-6" />
-                      </svg>
+                      {!q && (
+                        <svg
+                          width="11" height="11"
+                          viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                          className={`flex-shrink-0 text-[#6b6560] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+                        >
+                          <path d="m9 18 6-6-6-6" />
+                        </svg>
+                      )}
                     </button>
                   )}
 
@@ -354,19 +480,93 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                   {item.subItems && (
                     <div
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                        openMenus[item.id] ? item.id === 'smk3-audit' ? 'max-h-[3000px] opacity-100' : 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+                        isOpen
+                          ? item.id === 'smk3-audit' ? 'max-h-[3000px] opacity-100' : 'max-h-[600px] opacity-100'
+                          : 'max-h-0 opacity-0'
                       }`}
                     >
                       <div className="pl-2 mt-0.5">
                         {item.subItems.map((sub) => {
-                          const subActive = isActive(sub.href);
-                          // Detect if this is an element header (e.g. "1. ...") vs sub-element (e.g. "1.1 ...")
                           const isElementHeader = /^\d+\.\s/.test(sub.label);
+
+                          // Highlight teks yang cocok dengan query
+                          const highlightLabel = (label: string) => {
+                            if (!q) return label;
+                            const idx = label.toLowerCase().indexOf(q);
+                            if (idx === -1) return label;
+                            return (
+                              <>
+                                {label.slice(0, idx)}
+                                <mark className="bg-[#f15a22]/30 text-white rounded px-0.5">
+                                  {label.slice(idx, idx + q.length)}
+                                </mark>
+                                {label.slice(idx + q.length)}
+                              </>
+                            );
+                          };
+
+                          // ── Sub-group (punya children, misal Documentation & Records) ──
+                          if (sub.children) {
+                            const subGroupOpen = q ? true : !!openSubGroups[sub.label];
+                            const subGroupActive = sub.children.some((c) => isActive(c.href));
+                            return (
+                              <div key={sub.label}>
+                                {/* Header sub-group */}
+                                <button
+                                  onClick={() => !q && toggleSubGroup(sub.label)}
+                                  className={`w-full flex items-center gap-2.5 rounded-md text-[12px] my-px py-1.5 px-3 pl-11 transition-colors text-left ${
+                                    subGroupActive
+                                      ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
+                                      : 'text-[#8a8580] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
+                                  }`}
+                                >
+                                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${subGroupActive ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
+                                  <span className="flex-1">{highlightLabel(sub.label)}</span>
+                                  {!q && (
+                                    <svg
+                                      width="10" height="10"
+                                      viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                      className={`flex-shrink-0 text-[#6b6560] transition-transform duration-200 ${subGroupOpen ? 'rotate-90' : ''}`}
+                                    >
+                                      <path d="m9 18 6-6-6-6" />
+                                    </svg>
+                                  )}
+                                </button>
+                                {/* Children sub-group */}
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${subGroupOpen ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                  <div className="pl-2">
+                                    {sub.children.map((child) => {
+                                      const childActive = isActive(child.href);
+                                      return (
+                                        <Link
+                                          key={child.href}
+                                          href={child.href}
+                                          onClick={() => { setMobileOpen(false); setSearch(''); }}
+                                          className={`flex items-center gap-2 rounded-md text-[11px] my-px py-1.5 px-3 pl-14 transition-colors ${
+                                            childActive
+                                              ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
+                                              : 'text-[#8a8580] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
+                                          }`}
+                                        >
+                                          <span className={`w-1 h-1 rounded-full flex-shrink-0 ${childActive ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
+                                          {highlightLabel(child.label)}
+                                        </Link>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // ── Sub-item biasa (punya href) ──
+                          const subActive = isActive(sub.href!);
                           return (
                             <Link
                               key={sub.href}
-                              href={sub.href}
-                              onClick={() => setMobileOpen(false)}
+                              href={sub.href!}
+                              onClick={() => { setMobileOpen(false); setSearch(''); }}
                               className={`flex items-center gap-2.5 rounded-md text-[12px] my-px transition-colors ${
                                 isElementHeader
                                   ? `py-2 px-3 pl-8 font-semibold tracking-wide ${
@@ -384,7 +584,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                               {!isElementHeader && (
                                 <span className={`w-1 h-1 rounded-full flex-shrink-0 ${subActive ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
                               )}
-                              {sub.label}
+                              {highlightLabel(sub.label)}
                             </Link>
                           );
                         })}

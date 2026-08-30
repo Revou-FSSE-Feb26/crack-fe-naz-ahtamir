@@ -7,7 +7,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
   const { showError, showSuccess } = useNotifications();
 
   const [idKaryawan, setIdKaryawan] = useState("");
@@ -17,13 +17,13 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    console.log('📍 LoginPage check:', { isAuthenticated, authLoading });
+    console.log('📍 LoginPage useEffect triggered:', { isAuthenticated, authLoading, hasUser: !!user });
     
     if (isAuthenticated && !authLoading) {
       console.log('✅ Already authenticated, redirecting to dashboard...');
       router.push("/dashboard");
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, user]);
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -74,20 +74,16 @@ export default function LoginPage() {
 
     try {
       console.log('📡 Step 1: Calling login() from AuthContext...');
-      const result = await login(idKaryawan, password);
+      await login(idKaryawan, password);
       
       console.log('✅ Step 2: login() completed successfully');
-      console.log('Result:', result);
       console.log('Current isAuthenticated:', isAuthenticated);
       
       console.log('🎉 Step 3: Showing success notification...');
       showSuccess("Login berhasil!");
       
-      console.log('⏳ Step 4: Waiting 100ms before redirect...');
-      setTimeout(() => {
-        console.log('🚀 Step 5: Redirecting to /dashboard NOW');
-        router.push("/dashboard");
-      }, 100);
+      console.log('⏳ Step 4: useEffect will handle redirect automatically');
+      // Don't manually redirect - let the useEffect handle it after state updates
       
     } catch (err: any) {
       console.log('==========================================');
