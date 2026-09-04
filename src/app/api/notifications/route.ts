@@ -1,50 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// In-memory notification store — no DB needed for this feature
-let notificationsStore: any[] = [
-  {
-    id: "notif-1",
-    userId: "user-1",
-    type: "finding_submitted",
-    title: "Finding Submitted",
-    message: "Finding 'Electrical Hazard' telah disubmit",
-    findingId: "finding-1",
-    isRead: false,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: "notif-2",
-    userId: "user-1",
-    type: "approval_required",
-    title: "New Finding Requires Approval",
-    message: "Finding baru memerlukan approval: 'Machine Safety Issue'",
-    findingId: "finding-2",
-    isRead: false,
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: "notif-3",
-    userId: "user-1",
-    type: "finding_approved",
-    title: "Finding Approved",
-    message: "Finding 'Electrical Hazard' telah diapprove oleh Safety Supervisor",
-    findingId: "finding-1",
-    isRead: true,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+const BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
-// GET /api/notifications
+/**
+ * GET /api/notifications?limit=10
+ * Proxy ke NestJS backend — forward Authorization header dari klien.
+ * userId diambil dari JWT di backend, bukan dari query param.
+ */
 export async function GET(request: NextRequest) {
-  // Auth is handled by the NestJS backend; frontend passes the JWT in
-  // Authorization header directly to /api/... calls. This Next.js route
-  // is only used for in-memory demo notifications, so no session check needed.
+  const authHeader = request.headers.get("authorization");
+
+  if (!authHeader) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
-  const limit = parseInt(searchParams.get("limit") || "50");
+  const limit = searchParams.get("limit");
+  const qs = limit ? `?limit=${limit}` : "";
 
-  const sorted = [...notificationsStore].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  try {
+    const res = await fetch(`${BACKEND}/notifications${qs}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+      },
+      // Jangan cache — notifikasi harus selalu fresh
+      cache: "no-store",
+    });
 
-  return NextResponse.json(sorted.slice(0, limit), { status: 200 });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error("[notifications/route] Backend unreachable:", error);
+    return NextResponse.json([], { status: 200 });
+  }
 }

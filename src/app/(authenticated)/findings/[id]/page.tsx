@@ -24,7 +24,7 @@ interface Finding {
     [key: string]: any;
   };
   files?: string[];
-  createdBy: string;
+  createdBy: string | { nama?: string; [key: string]: any };
   createdById: string;
   approvedBy?: string;
   approvedById?: string;
@@ -173,7 +173,7 @@ export default function FindingDetailPage() {
         <div className="flex-1">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{finding.title}</h1>
           <div className="text-sm text-gray-600 space-y-1">
-            <p>Dibuat oleh <span className="font-semibold">{finding.createdBy}</span></p>
+            <p>Dibuat oleh <span className="font-semibold">{typeof finding.createdBy === 'object' ? finding.createdBy?.nama : finding.createdBy}</span></p>
             <p>Tanggal: <span className="font-semibold">{new Date(finding.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span></p>
           </div>
         </div>

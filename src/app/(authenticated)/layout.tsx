@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { TopHeader } from '@/components/layout/TopHeader';
 import { useNotificationPolling } from '@/hooks/useNotificationPolling';
 
 // Skeleton saat loading agar layout tidak "hilang" sebelum auth selesai
@@ -73,11 +74,7 @@ export default function AuthenticatedLayout({
     router.push('/');
   };
 
-  // Tampilkan skeleton saat loading — JANGAN return null
   if (isLoading) return <SidebarSkeleton />;
-
-  // Jika tidak authenticated, redirect sudah dihandle useEffect
-  // Tampilkan skeleton sambil menunggu redirect
   if (!user) return <SidebarSkeleton />;
 
   return (
@@ -92,9 +89,21 @@ export default function AuthenticatedLayout({
         onLogout={handleLogout}
       />
 
-      {/* Main content */}
+      {/* Main content dengan TopHeader */}
       <main className="flex-1 min-w-0 overflow-x-hidden">
-        {children}
+        {/* Fixed top header dengan notification bell */}
+        <TopHeader
+          user={{
+            name: user.nama || user.name || '',
+            role: user.role || 'user',
+            email: user.email || `${user.idKaryawan}@smk3.local`,
+          }}
+        />
+
+        {/* Padding top 56px agar konten tidak tertutup TopHeader yang fixed */}
+        <div className="pt-14">
+          {children}
+        </div>
       </main>
     </div>
   );

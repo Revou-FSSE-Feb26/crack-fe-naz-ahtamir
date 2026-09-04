@@ -92,12 +92,17 @@ async function fetchWithAuth<T = any>(
     headers,
   });
 
-  // Handle 401 Unauthorized - token may be expired
+  // Handle 401 Unauthorized
   if (response.status === 401) {
     clearToken();
-    // Redirect to login if in browser
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+    // Hanya redirect jika ini bukan background polling (ada token saat request)
+    // dan user sedang di halaman authenticated
+    if (typeof window !== 'undefined' && token) {
+      const path = window.location.pathname;
+      const isAuthPage = path === '/login' || path === '/';
+      if (!isAuthPage) {
+        window.location.href = '/login';
+      }
     }
     throw new Error('Unauthorized. Please login again.');
   }
@@ -291,11 +296,13 @@ export interface SafetyRecord {
 
 export const recordsApi = {
   getAll: async (
-    category: RecordCategory,
-    search?: string
+    category: RecordCategory | string,
+    search?: string,
+    createdById?: string,
   ): Promise<SafetyRecord[]> => {
     const params = new URLSearchParams({ subElementId: category });
     if (search) params.append('search', search);
+    if (createdById) params.append('createdById', createdById);
     return fetchWithAuth(`/smk3-data?${params.toString()}`);
   },
 
@@ -334,7 +341,7 @@ export const recordsApi = {
   // ── Upload with File ──────────────────────────────────────────────────────────
 
   createWithFile: async (
-    category: RecordCategory,
+    category: RecordCategory | string,
     formData: FormData
   ): Promise<SafetyRecord> => {
     const token = getStoredToken();
@@ -343,6 +350,10 @@ export const recordsApi = {
     const headers: HeadersInit = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+    // Pastikan subElementId ada di FormData — backend wajib menerimanya
+    if (!formData.get('subElementId')) {
+      formData.append('subElementId', category);
     }
     // Jangan set Content-Type! Browser akan set boundary otomatis untuk FormData
 
@@ -480,6 +491,15 @@ export const k3PolicyApi = {
 
   delete: async (id: string): Promise<void> => {
     return fetchWithAuth(`/k3-policy/${id}`, { method: 'DELETE' });
+  },
+};
+
+/**
+ * Deadline reminders — INPG findings yang sudah/hampir melewati deadline
+ */
+export const deadlineRemindersApi = {
+  getAll: async (daysAhead = 3): Promise<any[]> => {
+    return fetchWithAuth(`/smk3-data/deadline-reminders?daysAhead=${daysAhead}`);
   },
 };
 

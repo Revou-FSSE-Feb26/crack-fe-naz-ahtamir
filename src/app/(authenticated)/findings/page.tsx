@@ -20,7 +20,7 @@ interface Finding {
     tanggalInspeksi?: string;
   };
   createdAt: string;
-  createdBy: string;
+  createdBy: string | { nama?: string; [key: string]: any };
   approvedBy?: string;
 }
 
@@ -232,7 +232,7 @@ function FindingsListContent() {
                               : new Date(finding.createdAt).toLocaleDateString('id-ID')}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
-                            {finding.createdBy}
+                            {typeof finding.createdBy === 'object' ? finding.createdBy?.nama : finding.createdBy}
                           </td>
                           <td className="px-6 py-4 text-sm">
                             <div className="flex gap-2">

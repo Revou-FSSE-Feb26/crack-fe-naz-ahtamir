@@ -63,7 +63,7 @@ function DashboardContent() {
     };
 
     fetchFindings();
-  }, [showError]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

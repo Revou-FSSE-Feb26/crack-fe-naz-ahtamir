@@ -17,7 +17,7 @@ interface KonsultasiK3 {
   daftarHadirUrl: string;
   notulenUrl: string;
   status: string;
-  createdBy: string;
+  createdBy: string | { nama?: string; [key: string]: any };
   createdAt: string;
   updatedAt: string;
 }
@@ -466,7 +466,7 @@ export default function KonsultasiKebijakanPage() {
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[13px] text-[#6b6560] mb-3">
                         <div><span className="font-bold">Lokasi:</span> {konsultasi.lokasi}</div>
-                        <div><span className="font-bold">Dibuat oleh:</span> {konsultasi.createdBy}</div>
+                        <div><span className="font-bold">Dibuat oleh:</span> {typeof konsultasi.createdBy === 'object' ? konsultasi.createdBy?.nama : konsultasi.createdBy}</div>
                       </div>
                       <div className="text-[13px] text-[#6b6560] mb-3">
                         <span className="font-bold">Peserta:</span>

@@ -61,7 +61,7 @@ export interface SubSubElementData {
   // status temuan spesifik untuk inspeksi ketidaksesuaian
   findingStatus?: FindingStatus;
   approval?: ApprovalInfo;
-  createdBy: string;
+  createdBy: string | { nama?: string; [key: string]: any };
   createdById?: string;  // ID karyawan pembuat
   createdAt: string;
   updatedAt: string;

@@ -119,12 +119,17 @@ export default function InspeksiKetidaksesuaianPage() {
     if (filterStatus) r = r.filter(x => x.findingStatus === filterStatus);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      r = r.filter(x =>
-        x.createdBy?.toLowerCase().includes(q) ||
-        x.data?.lokasiUtama?.toLowerCase().includes(q) ||
-        x.data?.safetyOfficer?.toLowerCase().includes(q) ||
-        x.data?.deskripsiKetidaksesuaian?.toLowerCase().includes(q)
-      );
+      r = r.filter(x => {
+        const createdByStr = typeof x.createdBy === 'object'
+          ? (x.createdBy?.nama ?? '')
+          : (x.createdBy ?? '');
+        return (
+          createdByStr.toLowerCase().includes(q) ||
+          x.data?.lokasiUtama?.toLowerCase().includes(q) ||
+          x.data?.safetyOfficer?.toLowerCase().includes(q) ||
+          x.data?.deskripsiKetidaksesuaian?.toLowerCase().includes(q)
+        );
+      });
     }
     setFiltered(r);
   }, [records, filterStatus, searchQuery]);
@@ -587,7 +592,7 @@ export default function InspeksiKetidaksesuaianPage() {
                               {record.data?.lokasiUtama || "—"}
                             </p>
                             <p className="text-[11px] text-[#6b6560] truncate">
-                              {record.data?.safetyOfficer || record.createdBy}
+                              {record.data?.safetyOfficer || (typeof record.createdBy === 'object' ? record.createdBy?.nama : record.createdBy)}
                             </p>
                             <p className="text-[11px] text-[#c5c0bb]">
                               {record.data?.tanggalInspeksi
@@ -661,7 +666,7 @@ export default function InspeksiKetidaksesuaianPage() {
                         <LevelBadge level={selectedRecord.data.levelHazard} />
                       )}
                       <span className="text-xs text-[#6b6560] truncate">
-                        {selectedRecord.createdBy} ·{" "}
+                        {(typeof selectedRecord.createdBy === 'object' ? selectedRecord.createdBy?.nama : selectedRecord.createdBy)} ·{" "}
                         {new Date(selectedRecord.createdAt).toLocaleDateString("id-ID")}
                       </span>
                     </div>

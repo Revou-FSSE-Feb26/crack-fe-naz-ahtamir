@@ -11,6 +11,7 @@ import React, { useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { TopHeader } from '@/components/layout/TopHeader';
 import { useNotificationPolling } from '@/hooks/useNotificationPolling';
 
 function SidebarSkeleton() {
@@ -82,7 +83,16 @@ export function AuthenticatedShell({ children }: { children: React.ReactNode }) 
         onLogout={handleLogout}
       />
       <main className="flex-1 min-w-0 overflow-x-hidden">
-        {children}
+        <TopHeader
+          user={{
+            name: user.nama || user.name || '',
+            role: user.role || 'user',
+            email: user.email || `${user.idKaryawan}@smk3.local`,
+          }}
+        />
+        <div className="pt-14">
+          {children}
+        </div>
       </main>
     </div>
   );

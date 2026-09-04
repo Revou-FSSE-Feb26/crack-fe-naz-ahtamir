@@ -22,6 +22,8 @@ export const config: CrudPageConfig = {
       required: true,
       showInTable: true,
       placeholder: 'Safety officer name / ID',
+      autoFillFrom: 'nama',
+      readonlyOnCreate: true,
     },
     {
       key: 'lokasiUtama',

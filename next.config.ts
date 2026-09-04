@@ -1,15 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Prevent heavy server-side packages from being bundled by Turbopack/webpack,
-  // which reduces peak memory usage and eliminates the heap OOM crash.
   serverExternalPackages: ["mongoose", "bcrypt", "bcryptjs"],
 
-  // Skip TypeScript type errors during `next build` — type checking is
-  // handled by the IDE (tsserver) and CI linter instead.
-  // NOTE: ignoreBuildErrors also disables Turbopack's internal TS worker.
   typescript: {
     ignoreBuildErrors: true,
+  },
+
+  // Izinkan gambar dari backend (localhost:3001)
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3001',
+        pathname: '/uploads/**',
+      },
+    ],
   },
   
   // Rewrites untuk proxy (opsional - gunakan jika ingin proxy di production)

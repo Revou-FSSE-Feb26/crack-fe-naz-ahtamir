@@ -110,10 +110,16 @@ export default function SMK3DataList({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
-        item =>
-          item.title.toLowerCase().includes(q) ||
-          JSON.stringify(item.data).toLowerCase().includes(q) ||
-          item.createdBy.toLowerCase().includes(q)
+        item => {
+          const createdByStr = typeof item.createdBy === 'object'
+            ? (item.createdBy?.nama ?? '')
+            : (item.createdBy ?? '');
+          return (
+            item.title.toLowerCase().includes(q) ||
+            JSON.stringify(item.data).toLowerCase().includes(q) ||
+            createdByStr.toLowerCase().includes(q)
+          );
+        }
       );
     }
 
@@ -579,7 +585,7 @@ export default function SMK3DataList({
 
                       {/* Meta */}
                       <div className="flex flex-wrap gap-3 text-xs text-[#6b6560]">
-                        <span>Oleh: {item.createdBy}</span>
+                        <span>Oleh: {typeof item.createdBy === 'object' ? item.createdBy?.nama : item.createdBy}</span>
                         <span>·</span>
                         <span>
                           {new Date(item.createdAt).toLocaleDateString("id-ID", {

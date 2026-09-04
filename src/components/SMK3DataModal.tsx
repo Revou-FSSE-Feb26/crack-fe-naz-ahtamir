@@ -137,7 +137,7 @@ export default function SMK3DataModal({ data, onClose }: SMK3DataModalProps) {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-[#6b6560]">Dibuat oleh:</span>
-                <p className="font-semibold text-[#231f20]">{data.createdBy}</p>
+                <p className="font-semibold text-[#231f20]">{typeof data.createdBy === 'object' ? data.createdBy?.nama : data.createdBy}</p>
               </div>
               <div>
                 <span className="text-[#6b6560]">Tanggal dibuat:</span>
