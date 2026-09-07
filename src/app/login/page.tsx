@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 
@@ -201,6 +202,16 @@ export default function LoginPage() {
                   "Sign In"
                 )}
               </button>
+
+              {/* Forgot password link */}
+              <div className="text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-[13px] text-[#6b6560] hover:text-[#f15a22] transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </form>
 
             {error && (

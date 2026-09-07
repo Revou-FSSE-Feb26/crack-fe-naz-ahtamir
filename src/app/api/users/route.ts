@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * /api/users — thin proxy to NestJS backend.
- * MongoDB is no longer used here; all user data lives in PostgreSQL via NestJS.
+ * /api/users — thin proxy ke NestJS backend.
+ * Semua user data ada di PostgreSQL via NestJS.
  */
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
@@ -18,7 +18,7 @@ function forwardHeaders(request: NextRequest): HeadersInit {
 // GET /api/users
 export async function GET(request: NextRequest) {
   try {
-    const res = await fetch(`${BACKEND}/users`, {
+    const res = await fetch(`${BACKEND}/auth/users`, {
       headers: forwardHeaders(request),
     });
     const body = await res.json();
@@ -29,14 +29,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/users
+// POST /api/users — create single user (admin)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const res  = await fetch(`${BACKEND}/users`, {
-      method:  "POST",
+    const res = await fetch(`${BACKEND}/auth/bulk-create-users`, {
+      method: "POST",
       headers: forwardHeaders(request),
-      body:    JSON.stringify(body),
+      body: JSON.stringify({ users: [body] }),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
@@ -46,35 +46,25 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/users
+// PUT /api/users — update role
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const res  = await fetch(`${BACKEND}/users`, {
-      method:  "PUT",
+    const { userId, role } = body;
+
+    if (!userId) {
+      return NextResponse.json({ error: "userId diperlukan" }, { status: 400 });
+    }
+
+    const res = await fetch(`${BACKEND}/auth/users/${userId}/role`, {
+      method: "PATCH",
       headers: forwardHeaders(request),
-      body:    JSON.stringify(body),
+      body: JSON.stringify({ role }),
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (err) {
     console.error("PUT /api/users proxy error:", err);
-    return NextResponse.json({ error: "Backend unreachable" }, { status: 502 });
-  }
-}
-
-// DELETE /api/users?id=...
-export async function DELETE(request: NextRequest) {
-  try {
-    const id  = new URL(request.url).searchParams.get("id");
-    const res = await fetch(`${BACKEND}/users${id ? `?id=${id}` : ""}`, {
-      method:  "DELETE",
-      headers: forwardHeaders(request),
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (err) {
-    console.error("DELETE /api/users proxy error:", err);
     return NextResponse.json({ error: "Backend unreachable" }, { status: 502 });
   }
 }

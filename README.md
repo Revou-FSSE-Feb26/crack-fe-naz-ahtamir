@@ -1,125 +1,221 @@
-# OHS Nickel Smelter - Next.js Website
+# C.R.A.C.K Frontend — SMK3 Web App
 
-This is a Next.js website for the Occupational Health & Safety Department of Nickel Smelter, PT. QMB New Energy Materials.
+> **C**ompliance **R**isk **A**ssessment & **C**ontrol **K**nowledge  
+> Aplikasi web Next.js untuk sistem manajemen K3 (Keselamatan dan Kesehatan Kerja)
 
-## Features
+Live Demo: [https://crack-fe-naz-ahtamir.vercel.app](https://crack-fe-naz-ahtamir.vercel.app/)
 
-- **Background Video**: Video background on the homepage related to K3 (Keselamatan dan Kesehatan Kerja) implementation
-- **Tailwind CSS**: Using Tailwind CSS v4 for styling
-- **Responsive Design**: Mobile-first design that works on all devices
-- **Dark Mode Navigation**: Navigation bar with dark theme and orange accents
-- **KPI Dashboard**: Visualizations of safety performance data
-- **Multi-language Support**: Content in Indonesian and English
+---
 
 ## Tech Stack
 
-- **Next.js 16**: React framework with App Router
-- **TypeScript**: Type-safe development
-- **Tailwind CSS v4**: Utility-first CSS framework
-- **Bun**: Fast JavaScript runtime
+| Layer          | Teknologi                    |
+|----------------|------------------------------|
+| Framework      | Next.js 15 (App Router)      |
+| Language       | TypeScript                   |
+| Styling        | Tailwind CSS                 |
+| Auth           | JWT (via AuthContext)        |
+| HTTP Client    | Fetch API (native)           |
+| State          | React Context + useState     |
+| Runtime        | Bun                          |
 
-## Getting Started
+---
 
-### Prerequisites
+## Quick Start
 
-- [Bun](https://bun.sh/) - Fast JavaScript runtime
-- Node.js 18+ (if using npm instead of Bun)
-
-### Installation
-
-1. Navigate to the project directory:
 ```bash
-cd nextjs-app
-```
-
-2. Install dependencies:
-```bash
+# Install dependencies
 bun install
+
+# Copy environment file
+cp .env.local.example .env.local  # lalu isi NEXT_PUBLIC_API_URL
+
+# Development mode
+bun run dev
 ```
 
-3. Run the development server:
-```bash
-bun dev
+App berjalan di `http://localhost:3000`
+
+---
+
+## Environment Variables
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+---
 
-### Build for Production
-
-```bash
-bun build
-```
-
-### Start Production Server
-
-```bash
-bun start
-```
-
-## Project Structure
+## Struktur Halaman
 
 ```
-nextjs-app/
-├── public/
-│   ├── fonts/          # Custom fonts (century-gothic, grotesk, moderniz)
-│   └── videos/         # Video files (Video.mp4)
-├── src/
-│   ├── app/
-│   │   ├── components/ # Reusable components (Navbar, Footer, Section)
-│   │   ├── layouts/    # Layout components
-│   │   ├── ui/         # UI components
-│   │   ├── about/      # About page
-│   │   ├── contact/    # Contact page
-│   │   ├── dashboard/  # KPI Dashboard page
-│   │   ├── gallery/    # Gallery page
-│   │   ├── programs/   # Programs page
-│   │   ├── fonts.css   # Custom font-face declarations
-│   │   ├── globals.css # Global styles
-│   │   ├── layout.tsx  # Root layout
-│   │   └── page.tsx    # Homepage
-│   └── lib/            # Utility functions
-├── package.json
-└── tsconfig.json
+src/app/
+├── login/                   # Halaman login
+├── forgot-password/         # [Task 7] Request token reset password
+├── reset-password/          # Redirect ke /change-password?token=...
+├── change-password/         # [Task 8] Ganti password (dual mode)
+├── admin/                   # [Task 5&6] Admin panel — user management
+├── (authenticated)/
+│   ├── dashboard/           # Dashboard KPI + Profile Card [Task 12]
+│   ├── findings/            # Manajemen temuan K3
+│   └── notifications/       # Notifikasi user
+├── smk3/                    # SMK3 sub-element navigation
+├── safety-compliance/       # Data kepatuhan K3
+├── safety-competency/       # Data kompetensi
+├── accident-prevention/     # Data pencegahan kecelakaan
+└── admin/                   # Panel admin (user management)
 ```
 
-## Pages
+---
 
-- **Home** (`/`): Homepage with hero section, stats, programs preview, and CTA
-- **About** (`/about`): About OHS and policy documents
-- **Programs** (`/programs`): Safety programs and initiatives
-- **Gallery** (`/gallery`): Photo gallery and resources
-- **Dashboard** (`/dashboard`): KPI dashboard with charts
-- **Contact** (`/contact`): Contact information and report form
+## User Management Enhancement (Task 1–12)
 
-## Customization
+### Task 1 — Soft Delete (Backend)
+Endpoint backend: `PATCH /api/users/:id/deactivate` dan `/activate`
 
-### Changing the Video Background
+### Task 2 — Update Profil (Backend)
+Endpoint backend: `PATCH /api/users/:id`
 
-1. Place your video file in `public/videos/`
-2. Update the `src` attribute in `src/app/page.tsx`:
+### Task 3 — Forgot Password Flow (Backend)
+Endpoint backend: `POST /api/auth/forgot-password` dan `POST /api/auth/reset-password`
+
+### Task 4 — Change Password (Backend)
+Endpoint backend: `POST /api/users/:id/change-password`
+
+### Task 5 — Admin: Soft Delete Toggle
+Halaman `/admin` memiliki tombol toggle aktif/nonaktif di tiap baris user tabel.
+- Klik ikon ⊘ → nonaktifkan user (`approved=false`)
+- Klik ikon ✓ → aktifkan kembali user (`approved=true`)
+
+### Task 6 — Admin: Edit Modal
+Halaman `/admin` memiliki tombol edit (ikon pensil) yang membuka modal untuk mengupdate:
+- Nama lengkap
+- Jabatan
+- Departemen
+- Email
+
+### Task 7 — Forgot Password Page
+
+Halaman `/forgot-password`:
+1. User masukkan ID Karyawan
+2. Backend generate token reset (development: token tampil di response)
+3. Success state menampilkan token dan tombol langsung ke `/reset-password?token=...`
+
+```
+/forgot-password → submit idKaryawan → /reset-password?token=xxx → /change-password (via redirect)
+```
+
+### Task 8 — Change Password Page (Dual Mode)
+
+Halaman `/change-password` berjalan dalam dua mode berdasarkan query param `?token=`:
+
+| Mode              | URL                              | Keterangan                      |
+|-------------------|----------------------------------|---------------------------------|
+| Reset via token   | `/change-password?token=abc123`  | Dari forgot-password flow       |
+| Ganti sendiri     | `/change-password`               | User login ingin ganti password |
+
+> Halaman `/reset-password?token=xxx` otomatis redirect ke `/change-password?token=xxx`
+
+### Task 9 — Dokumentasi
+README ini.
+
+### Task 10 — Admin: Filter by Status
+
+Halaman `/admin` memiliki tab filter:
+- **Semua** — tampilkan semua user
+- **Aktif** — hanya `approved=true`
+- **Nonaktif** — hanya `approved=false`
+
+Counter ditampilkan di tiap tab.
+
+### Task 11 — Admin: Search User
+
+Search bar di halaman `/admin` mencari secara real-time berdasarkan:
+- Nama
+- ID Karyawan
+- Departemen
+- Jabatan
+
+### Task 12 — Dashboard: Profile Card
+
+Profile Card muncul di halaman `/dashboard` tepat di bawah Page Header, menampilkan:
+- Avatar dengan inisial nama
+- Nama lengkap + role badge (warna berbeda per role)
+- ID Karyawan, Departemen, Email
+- Tombol **Ganti Password** → `/change-password`
+- Tombol **Admin Panel** → `/admin` (hanya untuk role admin)
+
+---
+
+## Authentication Flow
+
+```
+Login → JWT token disimpan di localStorage
+      → AuthContext decode token → set user state
+      → isAuthenticated = true
+
+Refresh halaman → token dibaca dari localStorage
+                → decode JWT → restore user state
+
+Logout → clear token → redirect ke /login
+```
+
+AuthContext tersedia via hook `useAuth()`:
+
 ```tsx
-<source src="/videos/your-video.mp4" type="video/mp4" />
+const { user, isAuthenticated, isLoading, login, logout } = useAuth();
 ```
 
-### Updating KPI Data
-
-Edit the static data in `src/app/dashboard/page.tsx` and replace with API calls as needed.
-
-### Modifying Colors
-
-Update the CSS variables in `src/app/globals.css`:
-```css
-:root {
-  --orange-primary: #f15a22;
-  --orange-secondary: #f7941d;
-  --dark: #231f20;
-  /* ... */
+User object:
+```ts
+{
+  id: string
+  idKaryawan: string
+  nama: string
+  role: 'admin' | 'supervisor' | 'user'
+  departemen?: string
+  email?: string
 }
 ```
 
-## Browser Support
+---
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+## API Proxy
+
+Frontend Next.js meng-proxy semua request ke backend NestJS melalui route handler di `src/app/api/`:
+
+| Frontend Route                        | Backend Target                                    |
+|---------------------------------------|---------------------------------------------------|
+| `GET /api/users`                      | `GET /api/auth/users`                             |
+| `POST /api/users`                     | `POST /api/auth/bulk-create-users`                |
+| `PUT /api/users`                      | `PATCH /api/auth/users/:id/role`                  |
+| `GET /api/users/:id`                  | `GET /api/auth/users/:id`                         |
+| `PATCH /api/users/:id`                | `PATCH /api/auth/users/:id`                       |
+| `PATCH /api/users/:id/deactivate`     | `PATCH /api/auth/users/:id/deactivate`            |
+| `PATCH /api/users/:id/activate`       | `PATCH /api/auth/users/:id/activate`              |
+| `POST /api/users/:id/change-password` | `POST /api/auth/users/:id/change-password`        |
+| `POST /api/auth/forgot-password`      | `POST /api/auth/forgot-password`                  |
+| `POST /api/auth/reset-password`       | `POST /api/auth/reset-password`                   |
+
+---
+
+## Komponen Utama
+
+| Komponen                  | Lokasi                                          | Keterangan                         |
+|---------------------------|--------------------------------------------------|------------------------------------|
+| `AuthContext`             | `src/contexts/AuthContext.tsx`                   | State management auth global       |
+| `NotificationContext`     | `src/contexts/NotificationContext.tsx`           | Notifikasi polling & state         |
+| `ProtectedRoute`          | `src/components/ProtectedRoute.tsx`              | Guard route untuk halaman auth     |
+| `ProfileCard`             | `src/app/(authenticated)/dashboard/page.tsx`     | [Task 12] Profile user di dashboard|
+| `EditUserModal`           | `src/app/admin/page.tsx`                         | [Task 6] Modal edit user           |
+| `RecentFindings`          | `src/components/dashboard/RecentFindings.tsx`    | Widget temuan terbaru              |
+
+---
+
+## Default Password
+
+Saat login pertama kali, password default adalah: `{idKaryawan}K3`
+
+Contoh: ID Karyawan `82400469` → password `82400469K3`
+
+Setelah login, segera ganti password melalui `/change-password`.

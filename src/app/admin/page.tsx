@@ -1,162 +1,342 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getStoredToken } from "@/lib/api";
 
 interface User {
   id: string;
   idKaryawan: string;
-  name: string;
-  jabatan: string;
-  departemen: string;
+  nama: string;
+  jabatan?: string;
+  departemen?: string;
+  email?: string;
   role: string;
   approved: boolean;
 }
 
+type FilterStatus = "all" | "active" | "inactive";
+
+// ── Edit Modal ──────────────────────────────────────────
+function EditUserModal({
+  user,
+  onClose,
+  onSave,
+}: {
+  user: User;
+  onClose: () => void;
+  onSave: (updated: Partial<User>) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    nama: user.nama || "",
+    jabatan: user.jabatan || "",
+    departemen: user.departemen || "",
+    email: user.email || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      await onSave(form);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "Gagal menyimpan perubahan");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-[#e5e0db]">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5e0db]">
+          <div>
+            <h2 className="font-bold text-[16px] text-[#231f20]">Edit Profil User</h2>
+            <p className="text-[12px] text-[#6b6560] mt-0.5">{user.idKaryawan} · {user.nama}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-[#6b6560] hover:text-[#231f20] hover:bg-[#f1f0ee] rounded-lg transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">
+                Nama Lengkap
+              </label>
+              <input
+                type="text"
+                value={form.nama}
+                onChange={(e) => setForm({ ...form, nama: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">
+                Jabatan
+              </label>
+              <input
+                type="text"
+                value={form.jabatan}
+                onChange={(e) => setForm({ ...form, jabatan: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">
+                Departemen
+              </label>
+              <input
+                type="text"
+                value={form.departemen}
+                onChange={(e) => setForm({ ...form, departemen: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="opsional"
+                className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22] placeholder:text-[#c5c0bb]"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-[13px]">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 py-2.5 bg-[#f15a22] text-white font-bold text-[13px] rounded-lg hover:bg-[#d44d1a] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {saving ? "Menyimpan..." : "Simpan Perubahan"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 bg-[#e5e0db] text-[#231f20] font-bold text-[13px] rounded-lg hover:bg-[#d0cbc6] transition-colors"
+            >
+              Batal
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Admin Page ─────────────────────────────────────
 export default function AdminPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newUser, setNewUser] = useState({ 
-    idKaryawan: "", 
-    nama: "", 
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
+  const [newUser, setNewUser] = useState({
+    idKaryawan: "",
+    nama: "",
     jabatan: "",
     departemen: "",
-    password: "", 
-    role: "user" 
+    password: "",
+    role: "user",
   });
-  const [error, setError] = useState("");
 
+  // ── Auth guard ──
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      router.push("/login");
-    }
-    if (isAuthenticated && user?.role !== "admin") {
-      router.push("/dashboard");
-    }
-    if (isAuthenticated && user?.role === "admin") {
-      fetchUsers();
-    }
-  }, [isAuthenticated, isLoading, user, router]);
+    if (!isAuthenticated && !isLoading) router.push("/login");
+    if (isAuthenticated && user?.role !== "admin") router.push("/dashboard");
+    if (isAuthenticated && user?.role === "admin") fetchUsers();
+  }, [isAuthenticated, isLoading, user, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Auto-dismiss toast ──
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+
+  const showToast = (msg: string, type: "success" | "error" = "success") =>
+    setToast({ msg, type });
+
+  // ── Fetch all users ──
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/users");
+      const token = getStoredToken();
+      const res = await fetch("/api/users", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (res.ok) {
         const data = await res.json();
-        setUsers(data);
+        // Normalise field name (backend returns 'nama', old frontend expected 'name')
+        setUsers(
+          data.map((u: any) => ({
+            ...u,
+            nama: u.nama || u.name || "",
+          }))
+        );
       } else {
-        setError("Failed to fetch users");
+        setError("Gagal memuat data pengguna");
       }
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-      setError("Failed to fetch users");
+    } catch {
+      setError("Gagal memuat data pengguna");
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Filter + Search ──────────────────────────────────
+  const filteredUsers = useMemo(() => {
+    let result = users;
+
+    // Filter by status
+    if (filterStatus === "active") result = result.filter((u) => u.approved);
+    else if (filterStatus === "inactive") result = result.filter((u) => !u.approved);
+
+    // Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (u) =>
+          u.nama?.toLowerCase().includes(q) ||
+          u.idKaryawan?.toLowerCase().includes(q) ||
+          u.departemen?.toLowerCase().includes(q) ||
+          u.jabatan?.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [users, filterStatus, searchQuery]);
+
+  const activeCount   = users.filter((u) => u.approved).length;
+  const inactiveCount = users.filter((u) => !u.approved).length;
+
+  // ── Add User ──
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
+    const token = getStoredToken();
     try {
       const res = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(newUser),
       });
 
       if (res.ok) {
-        setNewUser({ 
-          idKaryawan: "", 
-          nama: "", 
-          jabatan: "",
-          departemen: "",
-          password: "", 
-          role: "user" 
-        });
+        setNewUser({ idKaryawan: "", nama: "", jabatan: "", departemen: "", password: "", role: "user" });
         setShowAddForm(false);
         fetchUsers();
-        alert("User created successfully!");
+        showToast("User berhasil dibuat");
       } else {
-        const errorData = await res.json();
-        setError(errorData.error || "Failed to add user");
+        const d = await res.json();
+        setError(d.error || d.message || "Gagal membuat user");
       }
-    } catch (error) {
-      console.error("Failed to add user:", error);
-      setError("Failed to add user");
+    } catch {
+      setError("Gagal membuat user");
     }
   };
 
-  const handleApprove = async (id: string) => {
+  // ── Soft Delete Toggle ──
+  const handleToggleStatus = async (u: User) => {
+    const action = u.approved ? "deactivate" : "activate";
+    const label = u.approved ? "nonaktifkan" : "aktifkan";
+    if (!confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} user ${u.nama}?`)) return;
+
+    const token = getStoredToken();
     try {
-      const res = await fetch("/api/users", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: id, action: "approve" }),
+      const res = await fetch(`/api/users/${u.id}/${action}`, {
+        method: "PATCH",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-
       if (res.ok) {
+        showToast(`User berhasil di${label}kan`);
         fetchUsers();
-        alert("User approved successfully!");
       } else {
-        alert("Failed to approve user");
+        const d = await res.json();
+        showToast(d.message || "Gagal", "error");
       }
-    } catch (error) {
-      console.error("Failed to approve user:", error);
-      alert("Failed to approve user");
+    } catch {
+      showToast("Gagal menghubungi server", "error");
     }
   };
 
-  const handleReject = async (id: string) => {
-    if (!confirm("Are you sure you want to reject and remove this user?")) {
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/users", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: id, action: "reject" }),
-      });
-
-      if (res.ok) {
-        fetchUsers();
-        alert("User rejected successfully!");
-      } else {
-        alert("Failed to reject user");
-      }
-    } catch (error) {
-      console.error("Failed to reject user:", error);
-      alert("Failed to reject user");
-    }
+  // ── Edit User Save ──
+  const handleEditSave = async (updated: Partial<User>) => {
+    if (!editingUser) return;
+    const token = getStoredToken();
+    const res = await fetch(`/api/users/${editingUser.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(updated),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Gagal menyimpan");
+    showToast("Profil berhasil diperbarui");
+    fetchUsers();
   };
 
+  // ── Update Role ──
   const handleRoleChange = async (id: string, newRole: string) => {
+    const token = getStoredToken();
     try {
       const res = await fetch("/api/users", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ userId: id, role: newRole }),
       });
-
       if (res.ok) {
+        showToast("Role berhasil diperbarui");
         fetchUsers();
-        alert("User role updated successfully!");
       } else {
-        alert("Failed to update role");
+        showToast("Gagal mengubah role", "error");
       }
-    } catch (error) {
-      console.error("Failed to update role:", error);
-      alert("Failed to update role");
+    } catch {
+      showToast("Gagal menghubungi server", "error");
     }
   };
 
+  // ── Loading States ──
   if (isLoading || loading) {
     return (
       <div className="p-8">
@@ -169,19 +349,33 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAuthenticated || user?.role !== "admin") {
-    return null;
-  }
-
-  const pendingUsers = users.filter((u) => !u.approved);
-  const approvedUsers = users.filter((u) => u.approved);
+  if (!isAuthenticated || user?.role !== "admin") return null;
 
   return (
     <div className="min-h-screen bg-[#f1f0ee]">
-      {/* Page Header — disesuaikan untuk layout dengan sidebar (tanpa padding navbar) */}
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-lg shadow-lg text-[13px] font-semibold text-white transition-all ${
+            toast.type === "success" ? "bg-green-600" : "bg-red-600"
+          }`}
+        >
+          {toast.type === "success" ? "✓ " : "✕ "}{toast.msg}
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSave={handleEditSave}
+        />
+      )}
+
+      {/* Page Header */}
       <div className="bg-[#231f20] px-6 md:px-10 py-8 border-b-[3px] border-b-[#f15a22]">
         <div className="max-w-6xl mx-auto">
-          {/* Breadcrumb navigasi */}
           <div className="flex items-center gap-2 text-[11px] text-[#6b6560] mb-4 flex-wrap">
             <Link href="/" className="hover:text-[#f15a22] transition-colors flex items-center gap-1">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -198,9 +392,7 @@ export default function AdminPage() {
 
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#f15a22] mb-2">
-                Admin Panel
-              </div>
+              <div className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#f15a22] mb-2">Admin Panel</div>
               <h1 className="font-bold text-white text-[clamp(28px,5vw,48px)] leading-tight">
                 User Management
               </h1>
@@ -208,37 +400,12 @@ export default function AdminPage() {
                 Kelola pengguna dan persetujuan akun sistem SMK3
               </p>
             </div>
-
-            {/* Quick navigation */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#3a3535] text-[#c5c0bb] text-[12px] font-medium rounded-lg hover:bg-[#f15a22] hover:text-white transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                </svg>
+              <Link href="/dashboard" className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#3a3535] text-[#c5c0bb] text-[12px] font-medium rounded-lg hover:bg-[#f15a22] hover:text-white transition-colors">
                 Dashboard
               </Link>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#3a3535] text-[#c5c0bb] text-[12px] font-medium rounded-lg hover:bg-[#f15a22] hover:text-white transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
+              <Link href="/" className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#3a3535] text-[#c5c0bb] text-[12px] font-medium rounded-lg hover:bg-[#f15a22] hover:text-white transition-colors">
                 Home
-              </Link>
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#3a3535] text-[#c5c0bb] text-[12px] font-medium rounded-lg hover:bg-[#f15a22] hover:text-white transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                Safety Complaint
               </Link>
             </div>
           </div>
@@ -248,20 +415,29 @@ export default function AdminPage() {
       {/* Content */}
       <section className="px-6 md:px-10 py-8">
         <div className="max-w-6xl mx-auto">
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-xl border border-[#e5e0db] p-4 text-center">
+              <div className="text-[28px] font-bold text-[#231f20]">{users.length}</div>
+              <div className="text-[11px] text-[#6b6560] font-semibold uppercase tracking-wide mt-0.5">Total User</div>
+            </div>
+            <div className="bg-white rounded-xl border border-[#e5e0db] p-4 text-center">
+              <div className="text-[28px] font-bold text-green-600">{activeCount}</div>
+              <div className="text-[11px] text-[#6b6560] font-semibold uppercase tracking-wide mt-0.5">Aktif</div>
+            </div>
+            <div className="bg-white rounded-xl border border-[#e5e0db] p-4 text-center">
+              <div className="text-[28px] font-bold text-[#f15a22]">{inactiveCount}</div>
+              <div className="text-[11px] text-[#6b6560] font-semibold uppercase tracking-wide mt-0.5">Nonaktif</div>
+            </div>
+          </div>
+
           <div className="bg-white rounded-xl shadow-sm border border-[#e5e0db]">
             {/* Panel Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#e5e0db] flex-wrap gap-3">
-              <div>
-                <h2 className="font-bold text-[18px] text-[#231f20]">Daftar Pengguna</h2>
-                <p className="text-[13px] text-[#6b6560] mt-0.5">
-                  {pendingUsers.length} menunggu persetujuan · {approvedUsers.length} disetujui
-                </p>
-              </div>
+              <h2 className="font-bold text-[18px] text-[#231f20]">Daftar Pengguna</h2>
               <button
-                onClick={() => {
-                  setShowAddForm(!showAddForm);
-                  setError("");
-                }}
+                onClick={() => { setShowAddForm(!showAddForm); setError(""); }}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#f15a22] text-white font-bold text-[13px] rounded-lg hover:bg-[#d44d1a] transition-colors"
               >
                 {showAddForm ? (
@@ -288,61 +464,25 @@ export default function AdminPage() {
                 <h3 className="font-bold text-[15px] text-[#231f20] mb-4">Tambah Pengguna Baru</h3>
                 <form onSubmit={handleAddUser} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[12px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">ID Karyawan *</label>
-                      <input
-                        type="text"
-                        required
-                        value={newUser.idKaryawan}
-                        onChange={(e) => setNewUser({ ...newUser, idKaryawan: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
-                        placeholder="Contoh: 82400469"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[12px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">Nama Lengkap *</label>
-                      <input
-                        type="text"
-                        required
-                        value={newUser.nama}
-                        onChange={(e) => setNewUser({ ...newUser, nama: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
-                        placeholder="Nama lengkap"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[12px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">Jabatan *</label>
-                      <input
-                        type="text"
-                        required
-                        value={newUser.jabatan}
-                        onChange={(e) => setNewUser({ ...newUser, jabatan: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
-                        placeholder="Jabatan / posisi"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[12px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">Departemen *</label>
-                      <input
-                        type="text"
-                        required
-                        value={newUser.departemen}
-                        onChange={(e) => setNewUser({ ...newUser, departemen: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
-                        placeholder="Nama departemen"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[12px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">Password *</label>
-                      <input
-                        type="password"
-                        required
-                        value={newUser.password}
-                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
-                        placeholder="Password"
-                      />
-                    </div>
+                    {[
+                      { label: "ID Karyawan *", field: "idKaryawan", type: "text", placeholder: "Contoh: 82400469" },
+                      { label: "Nama Lengkap *", field: "nama", type: "text", placeholder: "Nama lengkap" },
+                      { label: "Jabatan *", field: "jabatan", type: "text", placeholder: "Jabatan / posisi" },
+                      { label: "Departemen *", field: "departemen", type: "text", placeholder: "Nama departemen" },
+                      { label: "Password *", field: "password", type: "password", placeholder: "Password" },
+                    ].map(({ label, field, type, placeholder }) => (
+                      <div key={field}>
+                        <label className="block text-[12px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">{label}</label>
+                        <input
+                          type={type}
+                          required
+                          value={(newUser as any)[field]}
+                          onChange={(e) => setNewUser({ ...newUser, [field]: e.target.value })}
+                          className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
+                          placeholder={placeholder}
+                        />
+                      </div>
+                    ))}
                     <div>
                       <label className="block text-[12px] font-bold uppercase tracking-wide text-[#231f20] mb-1.5">Role *</label>
                       <select
@@ -358,23 +498,15 @@ export default function AdminPage() {
                   </div>
 
                   {error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-[13px]">
-                      {error}
-                    </div>
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-[13px]">{error}</div>
                   )}
 
                   <div className="flex gap-3">
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 bg-[#f15a22] text-white font-bold text-[13px] rounded-lg hover:bg-[#d44d1a] transition-colors"
-                    >
+                    <button type="submit" className="px-6 py-2.5 bg-[#f15a22] text-white font-bold text-[13px] rounded-lg hover:bg-[#d44d1a] transition-colors">
                       Buat Pengguna
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowAddForm(false); setError(""); }}
-                      className="px-6 py-2.5 bg-[#e5e0db] text-[#231f20] font-bold text-[13px] rounded-lg hover:bg-[#d0cbc6] transition-colors"
-                    >
+                    <button type="button" onClick={() => { setShowAddForm(false); setError(""); }}
+                      className="px-6 py-2.5 bg-[#e5e0db] text-[#231f20] font-bold text-[13px] rounded-lg hover:bg-[#d0cbc6] transition-colors">
                       Batal
                     </button>
                   </div>
@@ -382,149 +514,159 @@ export default function AdminPage() {
               </div>
             )}
 
-            <div className="p-6 space-y-8">
-              {/* Pending Users */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-[#f15a22]" />
-                  <h3 className="font-bold text-[15px] text-[#231f20]">
-                    Menunggu Persetujuan
-                    {pendingUsers.length > 0 && (
-                      <span className="ml-2 px-2 py-0.5 bg-[#f15a22] text-white text-[11px] rounded-full">{pendingUsers.length}</span>
-                    )}
-                  </h3>
-                </div>
-
-                {pendingUsers.length === 0 ? (
-                  <div className="text-center py-8 bg-[#faf9f7] rounded-lg border border-[#e5e0db]">
-                    <svg className="w-10 h-10 text-[#c5c0bb] mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {/* ── TASK 10 & 11: Filter + Search Bar ── */}
+            <div className="px-6 py-4 border-b border-[#e5e0db] flex flex-wrap items-center gap-3">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[200px]">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c5c0bb]"
+                  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Cari nama, ID karyawan, departemen..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-[#faf9f7] border border-[#e5e0db] text-[13px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22] placeholder:text-[#c5c0bb]"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#c5c0bb] hover:text-[#231f20]">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
-                    <p className="text-[#6b6560] text-[13px]">Tidak ada pengguna yang menunggu persetujuan</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {pendingUsers.map((u) => (
-                      <div key={u.id} className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200 flex-wrap gap-3">
-                        <div>
-                          <div className="font-semibold text-[#231f20] text-[14px]">{u.name}</div>
-                          <div className="text-[12px] text-[#6b6560] mt-0.5">
-                            ID: {u.idKaryawan} · {u.jabatan} · {u.departemen}
-                          </div>
-                          <span className="inline-block mt-1 px-2 py-0.5 bg-[#f15a22]/10 text-[#f15a22] text-[11px] font-bold rounded uppercase">{u.role}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleApprove(u.id)}
-                            className="px-4 py-2 bg-green-500 text-white font-bold text-[12px] rounded-lg hover:bg-green-600 transition-colors"
-                          >
-                            ✓ Setujui
-                          </button>
-                          <button
-                            onClick={() => handleReject(u.id)}
-                            className="px-4 py-2 bg-red-500 text-white font-bold text-[12px] rounded-lg hover:bg-red-600 transition-colors"
-                          >
-                            ✕ Tolak
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  </button>
                 )}
               </div>
 
-              {/* Approved Users */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <h3 className="font-bold text-[15px] text-[#231f20]">
-                    Pengguna Aktif
-                    <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-[11px] rounded-full">{approvedUsers.length}</span>
-                  </h3>
+              {/* Filter tabs */}
+              <div className="flex rounded-lg border border-[#e5e0db] overflow-hidden text-[12px] font-semibold">
+                {(["all", "active", "inactive"] as FilterStatus[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilterStatus(f)}
+                    className={`px-4 py-2 transition-colors ${
+                      filterStatus === f
+                        ? "bg-[#f15a22] text-white"
+                        : "bg-white text-[#6b6560] hover:bg-[#faf9f7]"
+                    }`}
+                  >
+                    {f === "all" ? `Semua (${users.length})` : f === "active" ? `Aktif (${activeCount})` : `Nonaktif (${inactiveCount})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── User Table ── */}
+            <div className="p-6">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-12 text-[#6b6560] text-[13px]">
+                  {searchQuery ? `Tidak ada hasil untuk "${searchQuery}"` : "Tidak ada pengguna ditemukan"}
                 </div>
-
-                {approvedUsers.length === 0 ? (
-                  <div className="text-center py-8 bg-[#faf9f7] rounded-lg border border-[#e5e0db]">
-                    <p className="text-[#6b6560] text-[13px]">Belum ada pengguna aktif</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-[13px]">
-                      <thead>
-                        <tr className="border-b border-[#e5e0db]">
-                          <th className="text-left py-2 px-3 font-semibold text-[#6b6560] text-[11px] uppercase tracking-wide">Nama</th>
-                          <th className="text-left py-2 px-3 font-semibold text-[#6b6560] text-[11px] uppercase tracking-wide">ID Karyawan</th>
-                          <th className="text-left py-2 px-3 font-semibold text-[#6b6560] text-[11px] uppercase tracking-wide">Jabatan</th>
-                          <th className="text-left py-2 px-3 font-semibold text-[#6b6560] text-[11px] uppercase tracking-wide">Departemen</th>
-                          <th className="text-left py-2 px-3 font-semibold text-[#6b6560] text-[11px] uppercase tracking-wide">Role</th>
-                          <th className="text-left py-2 px-3 font-semibold text-[#6b6560] text-[11px] uppercase tracking-wide">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#f1f0ee]">
-                        {approvedUsers.map((u) => (
-                          <tr key={u.id} className="hover:bg-[#faf9f7] transition-colors">
-                            <td className="py-3 px-3 font-medium text-[#231f20]">{u.name}</td>
-                            <td className="py-3 px-3 text-[#6b6560] font-mono text-[12px]">{u.idKaryawan}</td>
-                            <td className="py-3 px-3 text-[#6b6560]">{u.jabatan}</td>
-                            <td className="py-3 px-3 text-[#6b6560]">{u.departemen}</td>
-                            <td className="py-3 px-3">
-                              <select
-                                value={u.role}
-                                onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                                className="px-2.5 py-1.5 bg-white border border-[#c5c0bb] text-[12px] text-[#231f20] rounded focus:outline-none focus:border-[#f15a22]"
-                              >
-                                <option value="user">User</option>
-                                <option value="supervisor">Supervisor</option>
-                                <option value="admin">Admin</option>
-                              </select>
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-bold rounded-full">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                Aktif
-                              </span>
-                            </td>
-                          </tr>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[13px]">
+                    <thead>
+                      <tr className="border-b border-[#e5e0db]">
+                        {["Nama", "ID Karyawan", "Jabatan", "Departemen", "Role", "Status", "Aksi"].map((h) => (
+                          <th key={h} className="text-left py-2 px-3 font-semibold text-[#6b6560] text-[11px] uppercase tracking-wide">
+                            {h}
+                          </th>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f1f0ee]">
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id} className={`hover:bg-[#faf9f7] transition-colors ${!u.approved ? "opacity-60" : ""}`}>
+                          <td className="py-3 px-3 font-medium text-[#231f20]">{u.nama}</td>
+                          <td className="py-3 px-3 text-[#6b6560] font-mono text-[12px]">{u.idKaryawan}</td>
+                          <td className="py-3 px-3 text-[#6b6560]">{u.jabatan || "—"}</td>
+                          <td className="py-3 px-3 text-[#6b6560]">{u.departemen || "—"}</td>
+                          <td className="py-3 px-3">
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                              className="px-2.5 py-1.5 bg-white border border-[#c5c0bb] text-[12px] text-[#231f20] rounded focus:outline-none focus:border-[#f15a22]"
+                            >
+                              <option value="user">User</option>
+                              <option value="supervisor">Supervisor</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </td>
+                          <td className="py-3 px-3">
+                            {u.approved ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-bold rounded-full">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Aktif
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-600 text-[11px] font-bold rounded-full">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Nonaktif
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              {/* Edit button */}
+                              <button
+                                onClick={() => setEditingUser(u)}
+                                title="Edit profil"
+                                className="p-1.5 text-[#6b6560] hover:text-[#f15a22] hover:bg-[#f15a22]/10 rounded-lg transition-colors"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                              </button>
+                              {/* Toggle active/inactive (soft delete) */}
+                              <button
+                                onClick={() => handleToggleStatus(u)}
+                                title={u.approved ? "Nonaktifkan user" : "Aktifkan user"}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  u.approved
+                                    ? "text-[#6b6560] hover:text-red-600 hover:bg-red-50"
+                                    : "text-[#6b6560] hover:text-green-600 hover:bg-green-50"
+                                }`}
+                              >
+                                {u.approved ? (
+                                  // Ban icon
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                  </svg>
+                                ) : (
+                                  // Check circle icon
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                  </svg>
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Result count */}
+              {filteredUsers.length > 0 && (
+                <div className="mt-4 text-[12px] text-[#6b6560]">
+                  Menampilkan {filteredUsers.length} dari {users.length} pengguna
+                </div>
+              )}
             </div>
           </div>
 
           {/* Bottom navigation */}
-          <div className="mt-6 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-[#c5c0bb] text-[13px] text-[#231f20] font-medium rounded-lg hover:border-[#f15a22] hover:text-[#f15a22] transition-colors"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
-                </svg>
-                Kembali ke Dashboard
-              </Link>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-[#c5c0bb] text-[13px] text-[#231f20] font-medium rounded-lg hover:border-[#f15a22] hover:text-[#f15a22] transition-colors"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                Halaman Home
-              </Link>
-            </div>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#f15a22]/10 border border-[#f15a22]/30 text-[13px] text-[#f15a22] font-medium rounded-lg hover:bg-[#f15a22] hover:text-white transition-colors"
-            >
+          <div className="mt-6 flex items-center gap-3 flex-wrap">
+            <Link href="/dashboard" className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-[#c5c0bb] text-[13px] text-[#231f20] font-medium rounded-lg hover:border-[#f15a22] hover:text-[#f15a22] transition-colors">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
               </svg>
-              Safety Complaint
+              Kembali ke Dashboard
             </Link>
           </div>
         </div>

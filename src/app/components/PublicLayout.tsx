@@ -15,6 +15,14 @@ const AUTHENTICATED_PREFIXES = [
   '/safety-compliance',
   '/accident-prevention',
   '/safety-competency',
+  // Password / auth pages — standalone, no public navbar
+  '/change-password',
+  '/forgot-password',
+  '/reset-password',
+  '/login',
+  // User account pages
+  '/profile',
+  '/settings',
 ];
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {

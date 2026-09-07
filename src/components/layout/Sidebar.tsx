@@ -599,43 +599,35 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
 
         {/* Footer */}
         <div className="flex-shrink-0 border-t border-[#3a3535]">
-          {/* Admin panel link (hanya untuk admin) */}
-          {user?.role === 'admin' && (
-            <Link
-              href="/admin"
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2.5 px-5 py-3 text-[12px] text-[#8a8580] hover:bg-[rgba(241,90,34,0.12)] hover:text-[#f15a22] transition-colors border-b border-[#3a3535]"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M20 21a8 8 0 1 0-16 0" />
-                <path d="M16 11l1.5 1.5L20 10" />
-              </svg>
-              <span>Admin Panel</span>
-            </Link>
-          )}
-
-          {/* User info + logout */}
-          <div className="flex items-center gap-2.5 px-5 py-4">
-            <div className="w-7 h-7 rounded-full bg-[#f15a22] flex items-center justify-center font-semibold text-[12px] text-white flex-shrink-0">
-              {userInitial}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-semibold text-[#e5e0db] truncate">{user?.name ?? 'User'}</div>
-              <div className="text-[10px] text-[#6b6560] truncate">{user?.email ?? ''}</div>
-            </div>
-            <button
-              onClick={onLogout}
-              title="Logout"
-              className="text-[#6b6560] hover:text-[#f15a22] transition-colors ml-1 flex-shrink-0"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </button>
-          </div>
+          <Link
+            href="/profile"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-3 px-5 py-3 text-[13px] font-medium transition-colors border-b border-[#3a3535] ${
+              pathname === '/profile'
+                ? 'bg-[rgba(241,90,34,0.18)] text-[#f15a22]'
+                : 'text-[#a09b96] hover:bg-[rgba(241,90,34,0.12)] hover:text-white'
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+            Profile
+          </Link>
+          <Link
+            href="/settings"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-3 px-5 py-3 text-[13px] font-medium transition-colors ${
+              pathname === '/settings'
+                ? 'bg-[rgba(241,90,34,0.18)] text-[#f15a22]'
+                : 'text-[#a09b96] hover:bg-[rgba(241,90,34,0.12)] hover:text-white'
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            Settings
+          </Link>
         </div>
       </aside>
     </>
