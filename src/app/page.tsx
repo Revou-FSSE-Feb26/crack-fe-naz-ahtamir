@@ -107,7 +107,7 @@ export default function Home() {
           <div className="flex gap-4 justify-center flex-wrap">
             <a
               href="/dashboard"
-              className="inline-flex items-center gap-2.5 bg-gradient-to-r from-[#f15a22] to-[#f7941d] text-white border-2 border-[#f15a22] font-barlow-condensed font-bold text-sm tracking-[0.12em] uppercase px-8 py-4 rounded-full shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300">
+              className="inline-flex items-center gap-2.5 bg-[#F15A22] text-white font-barlow-condensed font-bold text-sm tracking-[0.12em] uppercase px-8 py-4 rounded-full shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 3v18h18" /><path d="M18 9l-5 5-4-4-3 3" />
               </svg>
@@ -396,7 +396,7 @@ export default function Home() {
         </div>
         <a
           href="/dashboard"
-          className="bg-gradient-to-r from-[#231f20] to-[#2d2929] text-white border-2 border-transparent font-barlow-condensed font-bold text-sm tracking-[0.12em] uppercase px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:from-[#f15a22] hover:to-[#f7941d] hover:scale-[1.05] transition-all duration-300 whitespace-nowrap"
+          className="bg-[#231f20] text-white font-barlow-condensed font-bold text-sm tracking-[0.12em] uppercase px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:scale-[1.05] transition-all duration-300 whitespace-nowrap"
         >
           Access Dashboard
         </a>

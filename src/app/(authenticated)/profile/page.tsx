@@ -94,13 +94,17 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       const token = getStoredToken();
+      // User biasa hanya boleh kirim email; admin boleh kirim semua field
+      const payload = user?.role === "admin"
+        ? form
+        : { email: form.email };
       const res = await fetch(`/api/users/${user!.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
@@ -189,7 +193,17 @@ export default function ProfilePage() {
         {/* Edit form */}
         {editing && (
           <div className="bg-white rounded-xl border border-[#f15a22] p-6">
-            <h3 className="font-bold text-[15px] text-[#231f20] mb-4">Edit Information</h3>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="font-bold text-[15px] text-[#231f20]">Edit Information</h3>
+              {user?.role !== "admin" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-700 rounded-lg">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  Hanya email yang dapat diubah
+                </span>
+              )}
+            </div>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
@@ -197,17 +211,32 @@ export default function ProfilePage() {
                   { label: "Position / Jabatan", key: "jabatan" },
                   { label: "Department", key: "departemen" },
                   { label: "Division", key: "divisi" },
-                ].map(({ label, key }) => (
-                  <div key={key}>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">{label}</label>
-                    <input
-                      type="text"
-                      value={(form as any)[key]}
-                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-[#c5c0bb] text-[14px] text-[#231f20] rounded-lg focus:outline-none focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
-                    />
-                  </div>
-                ))}
+                ].map(({ label, key }) => {
+                  const isLocked = user?.role !== "admin";
+                  return (
+                    <div key={key}>
+                      <label className="block text-[11px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">
+                        {label}
+                        {isLocked && (
+                          <svg className="inline ml-1.5 text-[#c5c0bb]" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                          </svg>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        value={(form as any)[key]}
+                        disabled={isLocked}
+                        onChange={(e) => !isLocked && setForm({ ...form, [key]: e.target.value })}
+                        className={`w-full px-3.5 py-2.5 border text-[14px] rounded-lg focus:outline-none transition-colors ${
+                          isLocked
+                            ? "bg-[#f1f0ee] border-[#e5e0db] text-[#a09a95] cursor-not-allowed"
+                            : "bg-white border-[#c5c0bb] text-[#231f20] focus:border-[#f15a22] focus:ring-1 focus:ring-[#f15a22]"
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
                 <div className="sm:col-span-2">
                   <label className="block text-[11px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">Email</label>
                   <input

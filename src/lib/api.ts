@@ -638,3 +638,99 @@ export const documentsApi = {
     return fetchWithAuth(`/documents/${id}`, { method: 'DELETE' });
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Emergency Drill API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DrillType =
+  | 'FIRE'
+  | 'EARTHQUAKE'
+  | 'CHEMICAL_SPILL'
+  | 'EVACUATION'
+  | 'FIRST_AID'
+  | 'OTHER';
+
+export type DrillStatus = 'COMPLETED' | 'NOT_COMPLETED';
+
+export interface EmergencyDrill {
+  id: string;
+  // Plan
+  planDate: string;
+  drillType: DrillType;
+  scenario: string;
+  departmentId: string;
+  department: { id: string; name: string; code: string };
+  division: string;
+  picPlan: string;
+  notesPlan?: string | null;
+  // Actual
+  actualDate?: string | null;
+  location?: string | null;
+  totalTKA?: number | null;
+  totalTKI?: number | null;
+  totalStaff?: number | null;
+  participationRate?: number | null;
+  duration?: string | null;
+  picActual?: string | null;
+  notesActual?: string | null;
+  // Files
+  photoDocumentation?: string | null;
+  attendanceList?: string | null;
+  drillReport?: string | null;
+  // Auto
+  status: DrillStatus;
+  // Audit
+  createdById: string;
+  createdBy: { id: string; nama: string };
+  createdAt: string;
+  updatedById?: string | null;
+  updatedBy?: { id: string; nama: string } | null;
+  updatedAt: string;
+}
+
+export const emergencyDrillApi = {
+  getAll: async (params?: {
+    status?: DrillStatus;
+    drillType?: DrillType;
+    departmentId?: string;
+    search?: string;
+  }): Promise<EmergencyDrill[]> => {
+    const qs = new URLSearchParams();
+    if (params?.status)       qs.append('status',       params.status);
+    if (params?.drillType)    qs.append('drillType',    params.drillType);
+    if (params?.departmentId) qs.append('departmentId', params.departmentId);
+    if (params?.search)       qs.append('search',       params.search);
+    return fetchWithAuth(`/emergency-drill?${qs.toString()}`);
+  },
+
+  getById: async (id: string): Promise<EmergencyDrill> => {
+    return fetchWithAuth(`/emergency-drill/${id}`);
+  },
+
+  create: async (formData: FormData): Promise<EmergencyDrill> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/emergency-drill`;
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'POST', headers, body: formData });
+    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
+    return res.json();
+  },
+
+  update: async (id: string, formData: FormData): Promise<EmergencyDrill> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/emergency-drill/${id}`;
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'PUT', headers, body: formData });
+    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
+    return res.json();
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return fetchWithAuth(`/emergency-drill/${id}`, { method: 'DELETE' });
+  },
+};

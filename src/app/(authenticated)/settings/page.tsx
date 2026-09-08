@@ -110,7 +110,7 @@ export default function SettingsPage() {
                   <SettingRow label="Employee ID" description="Cannot be changed">
                     <span className="font-mono text-[13px] text-[#6b6560] bg-[#f1f0ee] px-3 py-1.5 rounded-lg">{user?.idKaryawan}</span>
                   </SettingRow>
-                  <SettingRow label="Full Name" description="Your display name across the system">
+                  <SettingRow label="Full Name" description="Managed by administrator">
                     <span className="text-[13px] text-[#231f20]">{user?.nama}</span>
                   </SettingRow>
                   <SettingRow label="Role" description="Assigned by administrator">
@@ -120,13 +120,24 @@ export default function SettingsPage() {
                       "bg-blue-100 text-blue-700"
                     }`}>{user?.role}</span>
                   </SettingRow>
-                  <SettingRow label="Department">
+                  <SettingRow label="Department" description="Managed by administrator">
                     <span className="text-[13px] text-[#231f20]">{user?.departemen || "—"}</span>
                   </SettingRow>
                 </div>
+                {/* Role restriction notice */}
+                {user?.role !== "admin" && (
+                  <div className="mx-6 mb-4 mt-1 flex items-start gap-2.5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <svg className="flex-shrink-0 mt-0.5 text-amber-600" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <p className="text-[12px] text-amber-700 leading-relaxed">
+                      Nama, jabatan, departemen, dan divisi hanya dapat diubah oleh <strong>admin</strong>. Kamu hanya dapat mengubah <strong>email</strong> melalui halaman Edit Profile.
+                    </p>
+                  </div>
+                )}
                 <div className="px-6 py-4 border-t border-[#e5e0db] bg-[#faf9f7]">
                   <Link href="/profile" className="inline-flex items-center gap-2 px-4 py-2 bg-[#f15a22] text-white text-[13px] font-bold rounded-lg hover:bg-[#d44d1a] transition-colors">
-                    Edit Profile →
+                    {user?.role === "admin" ? "Edit Profile →" : "Update Email →"}
                   </Link>
                 </div>
               </div>
