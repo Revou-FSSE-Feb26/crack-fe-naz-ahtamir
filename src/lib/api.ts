@@ -734,3 +734,177 @@ export const emergencyDrillApi = {
     return fetchWithAuth(`/emergency-drill/${id}`, { method: 'DELETE' });
   },
 };
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Investigation API (Investigasi Kecelakaan — SMK3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type InvestigationStatus =
+  | 'DRAFT'
+  | 'UNDER_INVESTIGATION'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'VICTIM_SIGNED'
+  | 'COMPLETED'
+  | 'REJECTED';
+
+export type JenisKecelakaan =
+  | 'LUKA_RINGAN'
+  | 'LUKA_BERAT'
+  | 'MENINGGAL'
+  | 'KERUSAKAN'
+  | 'NEAR_MISS';
+
+export interface InvestigationUser {
+  id: string;
+  nama: string;
+  jabatan?: string | null;
+  departemen?: string | null;
+}
+
+export interface InvestigationLog {
+  id: string;
+  investigationId: string;
+  userId: string;
+  user: { id: string; nama: string };
+  action: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface Investigation {
+  id: string;
+  // Data Kecelakaan
+  tanggalKejadian: string;
+  waktuKejadian: string;
+  lokasi: string;
+  area: string;
+  deskripsiKejadian: string;
+  jenisKecelakaan: JenisKecelakaan;
+  jumlahKorban: number;
+  daftarKorban?: any[] | null;
+  saksi?: string | null;
+  kerugianMaterial?: string | null;
+  fotoBukti?: string | null;
+  // Data Investigasi
+  investigatorId?: string | null;
+  investigator?: InvestigationUser | null;
+  tanggalInvestigasi?: string | null;
+  rootCause?: string | null;
+  temuanInvestigasi?: string | null;
+  rekomendasiPerbaikan?: string | null;
+  lampiranLaporan?: string | null;
+  catatanTambahan?: string | null;
+  // Approval
+  approvedById?: string | null;
+  approvedBy?: InvestigationUser | null;
+  approvedAt?: string | null;
+  signatureApproval?: string | null;
+  // Victim Sign
+  victimSignedAt?: string | null;
+  victimSignature?: string | null;
+  // Supervisor Sign
+  supervisorSignedAt?: string | null;
+  supervisorSignature?: string | null;
+  supervisorNote?: string | null;
+  // Status
+  status: InvestigationStatus;
+  // Finding
+  findingId?: string | null;
+  finding?: { id: string; title: string; findingStatus: string } | null;
+  // Audit
+  pelaporId: string;
+  pelapor: InvestigationUser;
+  createdAt: string;
+  updatedAt: string;
+  logs: InvestigationLog[];
+}
+
+export const investigationApi = {
+  getAll: async (params?: {
+    status?: InvestigationStatus;
+    jenisKecelakaan?: JenisKecelakaan;
+    pelaporId?: string;
+    search?: string;
+  }): Promise<Investigation[]> => {
+    const qs = new URLSearchParams();
+    if (params?.status)          qs.append('status',          params.status);
+    if (params?.jenisKecelakaan) qs.append('jenisKecelakaan', params.jenisKecelakaan);
+    if (params?.pelaporId)       qs.append('pelaporId',       params.pelaporId);
+    if (params?.search)          qs.append('search',          params.search);
+    return fetchWithAuth(`/investigation?${qs.toString()}`);
+  },
+
+  getById: async (id: string): Promise<Investigation> => {
+    return fetchWithAuth(`/investigation/${id}`);
+  },
+
+  create: async (formData: FormData): Promise<Investigation> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/investigation`;
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'POST', headers, body: formData });
+    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
+    return res.json();
+  },
+
+  update: async (id: string, formData: FormData): Promise<Investigation> => {
+    const token = getStoredToken();
+    const url = `${API_BASE_URL}/investigation/${id}`;
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'PUT', headers, body: formData });
+    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
+    return res.json();
+  },
+
+  startInvestigation: async (id: string, investigatorId?: string): Promise<Investigation> => {
+    return fetchWithAuth(`/investigation/${id}/start-investigation`, {
+      method: 'PATCH',
+      body: JSON.stringify({ investigatorId }),
+    });
+  },
+
+  submitForApproval: async (id: string): Promise<Investigation> => {
+    return fetchWithAuth(`/investigation/${id}/submit-approval`, { method: 'PATCH' });
+  },
+
+  approve: async (id: string, signatureApproval?: string): Promise<Investigation> => {
+    return fetchWithAuth(`/investigation/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ signatureApproval }),
+    });
+  },
+
+  reject: async (id: string, reason: string): Promise<Investigation> => {
+    return fetchWithAuth(`/investigation/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  signByVictim: async (id: string, victimSignature?: string): Promise<Investigation> => {
+    return fetchWithAuth(`/investigation/${id}/sign-victim`, {
+      method: 'PATCH',
+      body: JSON.stringify({ victimSignature }),
+    });
+  },
+
+  signBySupervisor: async (
+    id: string,
+    data: { supervisorSignature?: string; supervisorNote?: string },
+  ): Promise<Investigation> => {
+    return fetchWithAuth(`/investigation/${id}/sign-supervisor`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string): Promise<void> => {
+    return fetchWithAuth(`/investigation/${id}`, { method: 'DELETE' });
+  },
+};
