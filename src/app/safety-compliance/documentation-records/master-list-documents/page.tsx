@@ -910,6 +910,61 @@ export default function MasterListDocumentsPage() {
 
   const totalByJenis = (j: JenisDokumen) => allDocs.filter((d) => d.jenisDokumen === j).length;
 
+  // ── Export Excel (print window) ──
+  const handleExport = () => {
+    const exportDocs = filtered.length > 0 ? filtered : allDocs;
+    const jenisOrder = ['MANUAL', 'SOP', 'INSTRUKSI_KERJA', 'FORMULIR'];
+    const sorted = [...exportDocs].sort((a, b) => {
+      const di = jenisOrder.indexOf(a.jenisDokumen) - jenisOrder.indexOf(b.jenisDokumen);
+      if (di !== 0) return di;
+      return a.nomorDokumen.localeCompare(b.nomorDokumen);
+    });
+
+    const rows = sorted.map((d, i) => `
+      <tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        <td>${i + 1}</td>
+        <td>${d.nomorDokumen}</td>
+        <td>${JENIS_LABEL[d.jenisDokumen]}</td>
+        <td>${d.namaDokumen}</td>
+        <td>${d.revisi ?? '00'}</td>
+        <td>${d.departemen?.name ?? '—'}</td>
+        <td>${new Date(d.tanggalTerbit).toLocaleDateString('id-ID')}</td>
+        <td>${STATUS_DOK_LABEL[d.statusDokumen] ?? d.statusDokumen}</td>
+        <td>${d.statusDistribusi.replace('_', ' ')}</td>
+        <td>${d.statusValidasi.replace('_', ' ')}</td>
+        <td>${d.parent?.nomorDokumen ?? '—'}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Master List Documents</title>
+    <style>
+      body{font-family:Arial,sans-serif;font-size:11px;color:#1f2937;padding:16px}
+      @media print{body{padding:4mm;font-size:10px}.no-print{display:none!important}@page{margin:8mm;size:A3 landscape}}
+      .header{background:#231f20;color:white;padding:14px 18px;margin-bottom:12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
+      .header h1{font-size:16px;margin:0 0 3px}
+      .header p{font-size:10px;color:#9ca3af;margin:0}
+      .print-btn{background:#f15a22;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:12px}
+      table{border-collapse:collapse;width:100%;min-width:900px}
+      th{background:#231f20;color:white;padding:8px 10px;text-align:left;font-size:11px;position:sticky;top:0}
+      td{padding:7px 10px;border-bottom:1px solid #e5e7eb;vertical-align:middle}
+    </style></head><body>
+    <div class="header">
+      <div><h1>Master List Documents</h1><p>Dicetak: ${new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })}</p></div>
+      <div style="text-align:right"><p style="font-size:14px;font-weight:700;color:#f15a22">${sorted.length} Dokumen</p><p>SMK3 Safety System</p></div>
+    </div>
+    <button class="print-btn no-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nomor</th><th>Jenis</th><th>Nama Dokumen</th><th>Revisi</th>
+        <th>Departemen</th><th>Tgl Terbit</th><th>Status Dok</th><th>Distribusi</th><th>Validasi</th><th>Parent</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
   // ── Flat tree untuk search/filter ──
   const flatFiltered = (() => {
     const order = ['MANUAL', 'SOP', 'INSTRUKSI_KERJA', 'FORMULIR'];
@@ -921,10 +976,10 @@ export default function MasterListDocumentsPage() {
   })();
 
   return (
-    <div className="min-h-screen bg-[#f5f4f2]">
+    <div className="min-h-screen bg-[#f1f0ee]">
 
       {/* Page Header */}
-      <div className="bg-[#1a1719] px-6 md:px-10 py-8 border-b-[3px] border-b-[#f15a22]">
+      <div className="bg-[#231f20] px-6 md:px-10 py-8 border-b-[3px] border-b-[#f15a22]">
         <div className="max-w-7xl mx-auto">
           <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#f15a22] mb-2">
             Safety Compliance › Documentation &amp; Records
@@ -969,66 +1024,72 @@ export default function MasterListDocumentsPage() {
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-8">
 
         {/* Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
-          {/* Search */}
-          <div className="relative flex-1 max-w-xs">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a09b96]" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama / nomor dokumen..."
-              className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#f15a22] focus:ring-2 focus:ring-[#f15a22]/20 shadow-sm"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a09b96] hover:text-[#231f20]">
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
+        <div className="flex flex-col gap-3 mb-5">
+          {/* Row 1: Search + Export + Tambah */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a09b96]" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama / nomor dokumen..."
+                className="w-full pl-10 pr-4 py-2.5 text-[14px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] focus:ring-2 focus:ring-[#f15a22]/20 transition-colors"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a09b96] hover:text-[#231f20]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Export button */}
+            <button
+              onClick={() => handleExport()}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#c5c0bb] text-[#231f20] text-[13px] font-semibold rounded-xl hover:border-green-400 hover:text-green-700 transition-colors whitespace-nowrap"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export
+            </button>
+
+            {/* Tambah Dokumen */}
+            <button
+              onClick={() => { setEditDoc(null); setModalOpen(true); }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#f15a22] text-white text-[13px] font-semibold rounded-xl hover:bg-[#d44d1a] transition-colors whitespace-nowrap"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Tambah Dokumen
+            </button>
           </div>
 
-          <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}
-            className="py-2.5 px-3.5 text-[13px] bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#f15a22] shadow-sm">
-            <option value="">Semua Departemen</option>
-            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          {/* Row 2: Filter dropdowns */}
+          <div className="flex flex-wrap gap-3">
+            <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}
+              className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors">
+              <option value="">Semua Departemen</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
 
-          <select value={filterJenis} onChange={(e) => setFilterJenis(e.target.value)}
-            className="py-2.5 px-3.5 text-[13px] bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#f15a22] shadow-sm">
-            <option value="">Semua Jenis</option>
-            {JENIS_OPTIONS.map((j) => <option key={j.value} value={j.value}>{j.label}</option>)}
-          </select>
-
-          {/* {!useFlat && (
-            <div className="flex gap-2">
-              <button onClick={expandAll}
-                className="px-3 py-2.5 text-[12px] font-semibold text-[#6b6560] bg-white border border-gray-200 rounded-xl hover:border-[#f15a22] hover:text-[#f15a22] transition-colors shadow-sm">
-                Buka Semua
-              </button>
-              <button onClick={collapseAll}
-                className="px-3 py-2.5 text-[12px] font-semibold text-[#6b6560] bg-white border border-gray-200 rounded-xl hover:border-[#f15a22] hover:text-[#f15a22] transition-colors shadow-sm">
-                Tutup Semua
-              </button>
-            </div>
-          )} */}
-
-          <button
-            onClick={() => { setEditDoc(null); setModalOpen(true); }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#f15a22] text-white text-[13px] font-semibold rounded-xl hover:bg-[#d44d1a] transition-colors whitespace-nowrap shadow-sm ml-auto"
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Tambah Dokumen
-          </button>
+            <select value={filterJenis} onChange={(e) => setFilterJenis(e.target.value)}
+              className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors">
+              <option value="">Semua Jenis</option>
+              {JENIS_OPTIONS.map((j) => <option key={j.value} value={j.value}>{j.label}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Info */}
         <div className="flex items-center justify-between mb-3 px-1">
           <p className="text-[12px] text-[#6b6560]">
-            {loading ? 'Memuat...' : `${filtered.length} dokumen${search || filterDept || filterJenis ? ` dari ${allDocs.length} total` : ''}`}
+            {loading ? 'Memuat data...' : `Menampilkan ${filtered.length} dokumen${search || filterDept || filterJenis ? ` dari ${allDocs.length} total` : ''}`}
           </p>
           {isAdmin && (
             <span className="text-[11px] px-2.5 py-0.5 bg-[#f15a22]/10 text-[#f15a22] rounded-full font-semibold border border-[#f15a22]/20">

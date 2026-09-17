@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { findingsApi, uploadsApi, getApiErrorMessage } from '@/lib/api';
+import { findingsApi, getApiErrorMessage, getStoredToken, clearToken } from '@/lib/api';
 import { Input, Select, Textarea, Button, Spinner, Card } from '@/components/ui';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
@@ -178,47 +178,72 @@ export function FindingForm({
     setIsSubmitting(true);
 
     try {
-      // Upload new files first
-      const fileUrls: string[] = [...filePreviews];
-      
+      // Backend endpoint POST /api/smk3-data menggunakan FileFieldsInterceptor (multipart/form-data)
+      // Jadi kita harus kirim sebagai FormData, bukan JSON
+      const formData = new FormData();
+
+      // Field wajib yang diharapkan backend
+      formData.append('subElementId', initialData?.subSubElementId || 'findings');
+      formData.append('title', data.title);
+      formData.append('findingStatus', data.status === 'OPEN' ? 'INPG' : data.status);
+
+      // Field data dikirim sebagai JSON string (sesuai logika backend: JSON.parse(body.data))
+      formData.append('data', JSON.stringify({
+        tanggalInspeksi: data.tanggal,
+        lokasiUtama: data.lokasi,
+        deskripsiKetidaksesuaian: data.deskripsi,
+        kategoriHazard: data.kategori || '',
+        levelHazard: data.levelHazard,
+      }));
+
+      // Lampirkan file gambar jika ada (dikirim langsung ke backend, tidak perlu upload terpisah)
       if (uploadedFiles.length > 0) {
         setIsUploadingFiles(true);
-        
-        for (const file of uploadedFiles) {
-          try {
-            const result = await uploadsApi.uploadFile(file, initialData?.subSubElementId || 'findings');
-            fileUrls.push(result.filePath);
-          } catch (error) {
-            toast.error(`Gagal upload file ${file.name}`);
-            throw error;
-          }
-        }
-        
+        uploadedFiles.forEach((file) => {
+          formData.append('dokumentasiHazard', file);
+        });
         setIsUploadingFiles(false);
       }
 
-      // Prepare finding data
-      const findingData = {
-        title: data.title,
-        findingStatus: data.status,
-        createdBy: user.nama || user.name || '',
-        createdById: user.id,
-        subSubElementId: initialData?.subSubElementId || 'findings',
-        data: {
-          tanggalInspeksi: data.tanggal,
-          lokasiUtama: data.lokasi,
-          deskripsiKetidaksesuaian: data.deskripsi,
-          kategoriHazard: data.kategori || '',
-          levelHazard: data.levelHazard,
-        },
-        files: fileUrls,
-      };
-
       // Create or update finding
       if (isEdit && initialData?.id) {
-        await findingsApi.update(initialData.id, findingData);
+        // Update tetap pakai JSON karena PUT endpoint tidak pakai FileFieldsInterceptor
+        const updateData = {
+          title: data.title,
+          findingStatus: data.status === 'OPEN' ? 'INPG' : data.status,
+          data: {
+            tanggalInspeksi: data.tanggal,
+            lokasiUtama: data.lokasi,
+            deskripsiKetidaksesuaian: data.deskripsi,
+            kategoriHazard: data.kategori || '',
+            levelHazard: data.levelHazard,
+          },
+        };
+        await findingsApi.update(initialData.id, updateData);
       } else {
-        await findingsApi.create(findingData);
+        // Create pakai FormData (multipart) agar cocok dengan FileFieldsInterceptor di backend
+        const token = getStoredToken();
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+        const headers: HeadersInit = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/smk3-data`, {
+          method: 'POST',
+          headers,
+          body: formData, // Jangan set Content-Type — browser set boundary otomatis untuk FormData
+        });
+
+        if (response.status === 401) {
+          clearToken();
+          toast.error('Sesi habis. Silakan login kembali.');
+          window.location.href = '/login';
+          return;
+        }
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.message || `Gagal menyimpan finding (${response.status})`);
+        }
       }
 
       // Display success toast with the exact message from requirements

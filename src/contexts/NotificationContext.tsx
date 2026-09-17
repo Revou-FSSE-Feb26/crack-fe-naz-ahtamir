@@ -13,12 +13,33 @@ import React, {
 
 export interface Notification {
   id: string;
-  type: 'finding_submitted' | 'approval_required' | 'finding_approved' | 'finding_rejected' | 'deadline_reminder';
+  type:
+    | 'finding_submitted'
+    | 'approval_required'
+    | 'finding_approved'
+    | 'finding_rejected'
+    | 'deadline_reminder'
+    | 'license_expiring_soon'
+    | 'license_expired';
   title: string;
   message: string;
   findingId?: string | null;
+  objekK3Id?: string | null;
   isRead: boolean;
   createdAt: string;
+  finding?: {
+    id: string;
+    title: string;
+    subElementId: string;
+    findingStatus: string;
+  } | null;
+  objekK3?: {
+    id: string;
+    namaAlat: string;
+    noSeri: string;
+    tanggalBerlaku: string;
+    statusRiksaUji: string;
+  } | null;
 }
 
 export interface Toast {
@@ -63,9 +84,104 @@ function getToken(): string | null {
   return localStorage.getItem('smk3_token');
 }
 
-/** Fetch langsung ke NestJS backend, silent fail, tidak redirect */
+/** Decode JWT payload tanpa verify signature */
+function decodeJWT(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    return JSON.parse(atob(parts[1]));
+  } catch {
+    return null;
+  }
+}
+
+/** Cek apakah token sudah expired (dengan buffer 30 detik) */
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJWT(token);
+  if (!payload?.exp) return true;
+  return payload.exp * 1000 < Date.now() + 30_000;
+}
+
+/**
+ * Ambil token valid: coba localStorage dulu, lalu fallback ke NextAuth session.
+ * Jika dapat token baru dari session, simpan ke localStorage agar polling
+ * berikutnya tidak perlu hit /api/auth/token lagi.
+ */
+async function getValidToken(): Promise<string | null> {
+  const stored = getToken();
+
+  // ── Debug diagnostik ─────────────────────────────────────────────────────
+  if (stored) {
+    const payload = decodeJWT(stored);
+    const expMs = payload?.exp ? payload.exp * 1000 : null;
+    const expired = isTokenExpired(stored);
+    console.debug(
+      `[NotifCtx] getValidToken: stored token ada, exp=${expMs ? new Date(expMs).toISOString() : 'N/A'}, expired=${expired}, payload keys=${payload ? Object.keys(payload).join(',') : 'null'}`
+    );
+  } else {
+    console.debug('[NotifCtx] getValidToken: tidak ada token di localStorage');
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  if (stored && !isTokenExpired(stored)) {
+    return stored;
+  }
+
+  // Token expired atau tidak ada
+  if (stored) {
+    console.warn('[NotifCtx] getValidToken: token expired, perlu login ulang');
+  } else {
+    console.debug('[NotifCtx] getValidToken: tidak ada token sama sekali');
+  }
+
+  return null;
+}
+
+/**
+ * Fetch notifikasi via Next.js proxy (/api/notifications).
+ *
+ * Proxy dipakai karena:
+ * 1. Menghindari CORS — browser tidak boleh langsung fetch ke localhost:3001
+ * 2. Proxy forward Authorization header dari client ke backend
+ *
+ * Saat proxy return 401: silent fail — TIDAK dispatch auth:unauthorized.
+ * Notification endpoint gagal tidak cukup alasan untuk paksa logout user.
+ */
+async function fetchNotifications(): Promise<Notification[] | null> {
+  const token = await getValidToken();
+  if (!token) {
+    console.debug('[NotifCtx] fetchNotifications: tidak ada token');
+    return null;
+  }
+
+  try {
+    const res = await fetch('/api/notifications', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      console.debug(`[NotifCtx] fetchNotifications: ${Array.isArray(data) ? data.length : 'non-array'} notif`);
+      return Array.isArray(data) ? data : null;
+    }
+
+    if (res.status === 401) {
+      console.warn('[NotifCtx] fetchNotifications: 401, silent fail');
+      return null;
+    }
+
+    console.warn(`[NotifCtx] fetchNotifications gagal (${res.status})`);
+  } catch (err) {
+    console.error('[NotifCtx] fetchNotifications error:', err);
+  }
+
+  return null;
+}
+
+/** Fetch ke backend langsung — untuk endpoint non-notifikasi (deadline reminders, dll) */
 async function backendFetch<T>(endpoint: string): Promise<T | null> {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) return null;
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -91,20 +207,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deadlineRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shownDeadlines = useRef<Set<string>>(new Set());
+  // Persistent flag — local variable akan reset setiap pemanggilan checkAuth
+  const isLoggedInRef = useRef(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   // ── Core fetch ───────────────────────────────────────────────────────────
 
   const refreshNotifications = useCallback(async () => {
-    const token = getToken();
-    if (!token) return;
-
     setIsLoading(true);
     try {
-      const data = await backendFetch<Notification[]>('/notifications');
+      const data = await fetchNotifications();
       if (Array.isArray(data)) {
         setNotifications(data);
+        console.debug(`[NotifCtx] refreshNotifications: set ${data.length} notif`);
+      } else {
+        console.warn('[NotifCtx] refreshNotifications: data bukan array, tidak update state');
       }
     } finally {
       setIsLoading(false);
@@ -142,24 +260,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   // ── Polling: mulai/stop berdasarkan ada tidaknya token ──────────────────
-  // Cek token setiap 1 detik (hanya baca localStorage, bukan network).
-  // Begitu token ada, mulai interval polling notifikasi dan deadline.
-  // Begitu token hilang (logout), hentikan polling tapi JANGAN hapus state —
-  // state akan di-clear oleh clearNotifications() yang dipanggil dari luar
-  // (AuthContext saat logout).
+  // Cek ketersediaan auth setiap 5 detik.
+  // isLoggedInRef dipakai agar flag tidak reset setiap kali checkAuth dipanggil.
 
   useEffect(() => {
-    let hasToken = !!getToken();
-
     const startPolling = () => {
-      if (pollingRef.current) return; // sudah jalan
+      if (pollingRef.current) return;
 
-      // Fetch langsung saat token pertama kali terdeteksi
       refreshNotifications();
-
       pollingRef.current = setInterval(refreshNotifications, POLL_INTERVAL_MS);
 
-      // Delay sedikit sebelum cek deadline pertama kali
       setTimeout(() => {
         checkDeadlines();
         deadlineRef.current = setInterval(checkDeadlines, DEADLINE_INTERVAL_MS);
@@ -177,29 +287,50 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     };
 
-    // Jika sudah punya token saat mount, langsung mulai
-    if (hasToken) startPolling();
-
-    // Watch setiap 1 detik untuk mendeteksi login/logout
-    const watcher = setInterval(() => {
-      const currentlyHasToken = !!getToken();
-
-      if (currentlyHasToken && !hasToken) {
-        // Login event
-        hasToken = true;
-        startPolling();
-      } else if (!currentlyHasToken && hasToken) {
-        // Logout event
-        hasToken = false;
+    // Handler untuk auth:unauthorized — dipanggil saat token tidak valid
+    // (dari fetchNotifications atau dari api.ts pada endpoint lain)
+    const handleUnauthorized = () => {
+      if (isLoggedInRef.current) {
+        console.debug('[NotifCtx] auth:unauthorized — stop polling, clear notifications');
+        isLoggedInRef.current = false;
         stopPolling();
         setNotifications([]);
         shownDeadlines.current.clear();
       }
-    }, 1000);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+    const checkAuth = () => {
+      const token = getToken();
+      if (token) {
+        // Ada token di localStorage — anggap logged in, mulai polling jika belum
+        if (!isLoggedInRef.current) {
+          isLoggedInRef.current = true;
+          startPolling();
+        }
+        return;
+      }
+
+      // Tidak ada token — stop polling jika sedang berjalan
+      if (isLoggedInRef.current) {
+        isLoggedInRef.current = false;
+        stopPolling();
+        setNotifications([]);
+        shownDeadlines.current.clear();
+      }
+    };
+
+    // Cek segera saat mount
+    checkAuth();
+
+    // Watch setiap 5 detik
+    const watcher = setInterval(checkAuth, 5000);
 
     return () => {
       clearInterval(watcher);
       stopPolling();
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
     };
   }, [refreshNotifications, checkDeadlines]);
 

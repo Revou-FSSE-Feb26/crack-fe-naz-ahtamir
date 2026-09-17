@@ -23,6 +23,7 @@ const AUTHENTICATED_PREFIXES = [
   // User account pages
   '/profile',
   '/settings',
+  '/notifications',
 ];
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {

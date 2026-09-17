@@ -15,8 +15,9 @@
  *  - Export Excel dengan filter rentang tanggal
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams } from 'next/navigation';
 import { recordsApi, k3PolicyApi, findingsApi, SafetyRecord } from '@/lib/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:3001';
@@ -50,7 +51,7 @@ export interface CrudPageConfig {
 }
 
 // Status filter tabs
-type StatusFilter = '' | 'INPG' | 'CLSD-ACC' | 'CLSD-TACC';
+type StatusFilter = '' | 'INPG' | 'CLSD' | 'CLSD-ACC' | 'CLSD-TACC';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -270,8 +271,10 @@ function FormModal({
         await onSubmit({ title: title.trim(), data });
       }
       onClose();
-    } catch {
-      // error dihandle parent
+    } catch (err: any) {
+      // Error sudah ditampilkan sebagai toast oleh parent (handleSubmit/handleSubmitFormData)
+      // Jangan tutup modal supaya user bisa coba lagi
+      console.error('Submit error:', err?.message);
     } finally {
       setSaving(false);
     }
@@ -1306,11 +1309,20 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 // ── Main CrudPage ─────────────────────────────────────────────────────────────
 
 export function CrudPage({ config }: { config: CrudPageConfig }) {
+  return (
+    <Suspense fallback={null}>
+      <CrudPageInner config={config} />
+    </Suspense>
+  );
+}
+
+function CrudPageInner({ config }: { config: CrudPageConfig }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor' || isAdmin;
   const isRegularUser = user?.role === 'user';
   const enableApproval = !!config.enableApproval;
+  const searchParams = useSearchParams();
 
   const [records, setRecords] = useState<SafetyRecord[]>([]);
   const [filtered, setFiltered] = useState<SafetyRecord[]>([]);
@@ -1351,6 +1363,14 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
+  // ── Auto-buka detail jika ada ?id= di URL (dari klik notifikasi) ──
+  useEffect(() => {
+    const targetId = searchParams.get('id');
+    if (!targetId || records.length === 0) return;
+    const found = records.find((r) => r.id === targetId);
+    if (found) setDetailRecord(found);
+  }, [searchParams, records]);
+
   // ── Filter client-side ──
   useEffect(() => {
     let result = [...records];
@@ -1359,6 +1379,8 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
     if (enableApproval && statusFilter) {
       if (statusFilter === 'INPG') {
         result = result.filter((r) => (r as any).findingStatus === 'INPG');
+      } else if (statusFilter === 'CLSD') {
+        result = result.filter((r) => (r as any).findingStatus === 'CLSD' && !(r as any).approvalStatus);
       } else if (statusFilter === 'CLSD-ACC') {
         result = result.filter((r) => (r as any).findingStatus === 'CLSD' && (r as any).approvalStatus === 'ACC');
       } else if (statusFilter === 'CLSD-TACC') {
@@ -1388,6 +1410,7 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
   const countStatus = (s: StatusFilter) => {
     if (s === '') return records.length;
     if (s === 'INPG') return records.filter((r) => (r as any).findingStatus === 'INPG').length;
+    if (s === 'CLSD') return records.filter((r) => (r as any).findingStatus === 'CLSD' && !(r as any).approvalStatus).length;
     if (s === 'CLSD-ACC') return records.filter((r) => (r as any).findingStatus === 'CLSD' && (r as any).approvalStatus === 'ACC').length;
     if (s === 'CLSD-TACC') return records.filter((r) => (r as any).findingStatus === 'CLSD' && (r as any).approvalStatus === 'TACC').length;
     return 0;
@@ -1395,27 +1418,39 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
 
   // ── Submit ──
   const handleSubmit = async (values: { title: string; data: Record<string, string> }) => {
-    if (editTarget) {
-      await recordsApi.update(editTarget.id, values);
-      showToast('Record berhasil diperbarui', 'success');
-    } else {
-      await recordsApi.create(config.categoryId as any, values);
-      showToast('Record berhasil ditambahkan', 'success');
+    try {
+      if (editTarget) {
+        await recordsApi.update(editTarget.id, values);
+        showToast('Record berhasil diperbarui', 'success');
+      } else {
+        await recordsApi.create(config.categoryId as any, values);
+        showToast('Record berhasil ditambahkan', 'success');
+      }
+      await fetchRecords();
+    } catch (err: any) {
+      const msg = err.message || 'Gagal menyimpan record';
+      showToast(msg, 'error');
+      throw err; // re-throw agar FormModal tahu ada error (tidak menutup modal)
     }
-    await fetchRecords();
   };
 
   const handleSubmitFormData = async (formData: FormData) => {
-    if (editTarget) {
-      if (config.categoryId === 'sc-k3-policy') await k3PolicyApi.updateWithFile(editTarget.id, formData);
-      else await recordsApi.updateWithFile(editTarget.id, formData);
-      showToast('Record berhasil diperbarui', 'success');
-    } else {
-      if (config.categoryId === 'sc-k3-policy') await k3PolicyApi.createWithFile(formData);
-      else await recordsApi.createWithFile(config.categoryId as any, formData);
-      showToast('Record berhasil ditambahkan', 'success');
+    try {
+      if (editTarget) {
+        if (config.categoryId === 'sc-k3-policy') await k3PolicyApi.updateWithFile(editTarget.id, formData);
+        else await recordsApi.updateWithFile(editTarget.id, formData);
+        showToast('Record berhasil diperbarui', 'success');
+      } else {
+        if (config.categoryId === 'sc-k3-policy') await k3PolicyApi.createWithFile(formData);
+        else await recordsApi.createWithFile(config.categoryId as any, formData);
+        showToast('Record berhasil ditambahkan', 'success');
+      }
+      await fetchRecords();
+    } catch (err: any) {
+      const msg = err.message || 'Gagal menyimpan record';
+      showToast(msg, 'error');
+      throw err; // re-throw agar FormModal tahu ada error (tidak menutup modal)
     }
-    await fetchRecords();
   };
 
   // ── Delete ──
@@ -1452,6 +1487,7 @@ export function CrudPage({ config }: { config: CrudPageConfig }) {
   const STATUS_TABS: { value: StatusFilter; label: string; color: string; activeColor: string }[] = [
     { value: '', label: 'ALL', color: 'border-[#e5e0db] text-[#6b6560] hover:border-[#c5c0bb]', activeColor: 'bg-[#231f20] text-white border-[#231f20]' },
     { value: 'INPG', label: '⏳ INPG', color: 'border-[#e5e0db] text-[#6b6560] hover:border-amber-300', activeColor: 'bg-amber-500 text-white border-amber-500' },
+    { value: 'CLSD', label: '🔒 CLSD (Pending)', color: 'border-[#e5e0db] text-[#6b6560] hover:border-blue-300', activeColor: 'bg-blue-600 text-white border-blue-600' },
     { value: 'CLSD-ACC', label: '✅ CLSD-ACC', color: 'border-[#e5e0db] text-[#6b6560] hover:border-green-300', activeColor: 'bg-green-600 text-white border-green-600' },
     { value: 'CLSD-TACC', label: '❌ CLSD-TACC', color: 'border-[#e5e0db] text-[#6b6560] hover:border-red-300', activeColor: 'bg-red-600 text-white border-red-600' },
   ];

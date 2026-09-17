@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams } from 'next/navigation';
 import {
   objekK3Api,
   ObjekK3,
@@ -919,8 +920,17 @@ function ObjekK3Card({
 // ── Main Page ─────────────────────────────────────────────────────────────
 
 export default function EquipmentSafetyPage() {
+  return (
+    <Suspense fallback={null}>
+      <EquipmentSafetyPageInner />
+    </Suspense>
+  );
+}
+
+function EquipmentSafetyPageInner() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'supervisor';
+  const searchParams = useSearchParams();
 
   const [items, setItems] = useState<ObjekK3[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -958,6 +968,14 @@ export default function EquipmentSafetyPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // ── Auto-buka detail jika ada ?id= di URL (dari klik notifikasi) ──
+  useEffect(() => {
+    const targetId = searchParams.get('id');
+    if (!targetId || items.length === 0) return;
+    const found = items.find((o) => o.id === targetId);
+    if (found) setDetail(found);
+  }, [searchParams, items]);
 
   const handleDelete = async (obj: ObjekK3) => {
     if (!confirm(`Hapus objek K3 "${obj.namaAlat}" (${obj.noSeri})?\n\nSeluruh data termasuk riwayat pemeriksaan akan ikut terhapus.`)) return;
@@ -998,6 +1016,52 @@ export default function EquipmentSafetyPage() {
   const setFilter = (k: keyof ObjekK3Filters, v: string) =>
     setFilters((p) => ({ ...p, [k]: v || undefined }));
 
+  const handleExport = () => {
+    const rows = items.map((o, i) => `
+      <tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        <td>${i + 1}</td>
+        <td>${o.namaAlat}</td>
+        <td>${o.noSeri}</td>
+        <td>${o.kategori.replace(/_/g, ' ')}</td>
+        <td>${o.perusahaan}</td>
+        <td>${o.lokasi}</td>
+        <td>${o.jumlah}</td>
+        <td>${o.statusKelayakan ? o.statusKelayakan.replace(/_/g, ' ') : '—'}</td>
+        <td>${o.statusRiksaUji ? o.statusRiksaUji.replace(/_/g, ' ') : '—'}</td>
+        <td>${o.tanggalBerlaku ? new Date(o.tanggalBerlaku).toLocaleDateString('id-ID') : '—'}</td>
+        <td>${o.sisaHari != null ? `${o.sisaHari} hari` : '—'}</td>
+        <td>${o.noSuket ?? '—'}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Objek K3</title>
+    <style>
+      body{font-family:Arial,sans-serif;font-size:11px;color:#1f2937;padding:16px}
+      @media print{body{padding:4mm;font-size:10px}.no-print{display:none!important}@page{margin:8mm;size:A3 landscape}}
+      .header{background:#231f20;color:white;padding:14px 18px;margin-bottom:12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
+      .header h1{font-size:16px;margin:0 0 3px}.header p{font-size:10px;color:#9ca3af;margin:0}
+      .print-btn{background:#f15a22;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:12px}
+      table{border-collapse:collapse;width:100%;min-width:900px}
+      th{background:#231f20;color:white;padding:8px 10px;text-align:left;font-size:11px;position:sticky;top:0}
+      td{padding:7px 10px;border-bottom:1px solid #e5e7eb;vertical-align:middle}
+    </style></head><body>
+    <div class="header">
+      <div><h1>Daftar Objek K3</h1><p>Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p></div>
+      <div style="text-align:right"><p style="font-size:14px;font-weight:700;color:#f15a22">${items.length} Objek</p><p>SMK3 Safety System</p></div>
+    </div>
+    <button class="print-btn no-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <table>
+      <thead><tr>
+        <th>#</th><th>Nama Alat</th><th>No Seri</th><th>Kategori</th><th>Perusahaan</th>
+        <th>Lokasi</th><th>Jumlah</th><th>Status Kelayakan</th><th>Riksa Uji</th>
+        <th>Berlaku s/d</th><th>Sisa Hari</th><th>No Suket</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
   return (
     <div className="min-h-screen bg-[#f1f0ee]">
       {/* ── Dark Header ── */}
@@ -1015,43 +1079,16 @@ export default function EquipmentSafetyPage() {
                 Kelola aset K3 wajib sertifikasi: riksa uji berkala, dokumen kelayakan, dan riwayat pemeriksaan.
               </p>
             </div>
-            {isAdmin && (
-              <button
-                onClick={() => { setEditing(null); setShowForm(true); }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#f15a22] text-white text-[13px] font-semibold rounded-xl hover:bg-[#d44d1a] transition-colors whitespace-nowrap"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Tambah Objek K3
-              </button>
-            )}
           </div>
 
-          {/* Stats row */}
-          {!isLoading && items.length > 0 && (
-            <div className="mt-5 flex flex-wrap gap-3">
-              {[
-                { label: 'Total', value: items.length, color: 'text-white' },
-                { label: 'Layak', value: items.filter((i) => i.statusKelayakan === 'LAYAK').length, color: 'text-green-400' },
-                { label: 'Tidak Layak', value: items.filter((i) => i.statusKelayakan === 'TIDAK_LAYAK').length, color: 'text-red-400' },
-                { label: 'Kadaluarsa', value: items.filter((i) => i.sisaHari != null && i.sisaHari < 0).length, color: 'text-orange-400' },
-              ].map((s) => (
-                <div key={s.label} className="bg-white/10 rounded-xl px-4 py-2 text-center min-w-[70px]">
-                  <p className={`text-[20px] font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-[10px] text-[#8a8580]">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
       {/* ── Body ── */}
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-8">
 
-        {/* Search + Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        {/* Toolbar Row 1: Search + Export + Tambah */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
           {/* Search */}
           <div className="relative flex-1">
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a09b96]" width="15" height="15"
@@ -1060,8 +1097,8 @@ export default function EquipmentSafetyPage() {
             </svg>
             <input
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama alat, no seri, lokasi, suket..."
-              className="w-full pl-10 pr-4 py-2.5 text-[14px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] focus:ring-2 focus:ring-[#f15a22]/20"
+              placeholder="Cari nama alat, no seri, lokasi..."
+              className="w-full pl-10 pr-4 py-2.5 text-[14px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] focus:ring-2 focus:ring-[#f15a22]/20 transition-colors"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a09b96] hover:text-[#231f20]">
@@ -1072,11 +1109,49 @@ export default function EquipmentSafetyPage() {
             )}
           </div>
 
-          {/* Quick filters */}
+          {/* Export */}
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#c5c0bb] text-[#231f20] text-[13px] font-semibold rounded-xl hover:border-green-400 hover:text-green-700 transition-colors whitespace-nowrap"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export
+          </button>
+
+          {/* Tambah */}
+          {isAdmin && (
+            <button
+              onClick={() => { setEditing(null); setShowForm(true); }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#f15a22] text-white text-[13px] font-semibold rounded-xl hover:bg-[#d44d1a] transition-colors whitespace-nowrap"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Tambah Objek K3
+            </button>
+          )}
+        </div>
+
+        {/* Toolbar Row 2: Filter dropdowns */}
+        <div className="flex flex-wrap gap-3 mb-6">
+          <select
+            value={filters.kategori ?? ''}
+            onChange={(e) => setFilter('kategori', e.target.value)}
+            className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors"
+          >
+            <option value="">Semua Kategori</option>
+            {KATEGORI_OPTIONS.map((k) => (
+              <option key={k.value} value={k.value}>{k.label}</option>
+            ))}
+          </select>
+
           <select
             value={filters.perusahaan ?? ''}
             onChange={(e) => setFilter('perusahaan', e.target.value)}
-            className="px-3 py-2.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22]"
+            className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors"
           >
             <option value="">Semua Perusahaan</option>
             {PERUSAHAAN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1085,43 +1160,13 @@ export default function EquipmentSafetyPage() {
           <select
             value={filters.statusKelayakan ?? ''}
             onChange={(e) => setFilter('statusKelayakan', e.target.value)}
-            className="px-3 py-2.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22]"
+            className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors"
           >
-            <option value="">Semua Status</option>
+            <option value="">Semua Status Kelayakan</option>
             <option value="LAYAK">Layak</option>
             <option value="TIDAK_LAYAK">Tidak Layak</option>
             <option value="PERLU_PERBAIKAN">Perlu Perbaikan</option>
           </select>
-        </div>
-
-        {/* Category Filter Chips */}
-        <div className="flex items-center gap-2 mb-6 flex-wrap">
-          <button
-            onClick={() => setFilter('kategori', '')}
-            className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors ${
-              !filters.kategori
-                ? 'bg-[#231f20] text-white border-[#231f20]'
-                : 'bg-white border-[#e5e0db] text-[#6b6560] hover:border-[#c5c0bb]'
-            }`}
-          >
-            Semua ({items.length})
-          </button>
-          {KATEGORI_OPTIONS.map((k) => (
-            <button
-              key={k.value}
-              onClick={() => setFilter('kategori', filters.kategori === k.value ? '' : k.value)}
-              className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors ${
-                filters.kategori === k.value
-                  ? 'bg-[#f15a22] text-white border-[#f15a22]'
-                  : 'bg-white border-[#e5e0db] text-[#6b6560] hover:border-[#f15a22]/50'
-              }`}
-            >
-              {k.label.replace('Pesawat ', 'P.')}
-              {!isLoading && (
-                <span className="ml-1.5 opacity-70">({counts[k.value] ?? 0})</span>
-              )}
-            </button>
-          ))}
         </div>
 
         {/* Content */}

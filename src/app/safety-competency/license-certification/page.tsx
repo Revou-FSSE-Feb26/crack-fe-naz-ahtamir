@@ -1230,14 +1230,6 @@ export default function LicenseCertificationPage() {
     setShowForm(true);
   };
 
-  // ── Expiry count chips ────────────────────────────────────────────────────
-  const expiryCounts = {
-    all: records.length,
-    active: records.filter((r) => getExpiryStatus(r.data.masaBerlaku) === 'active').length,
-    soon: records.filter((r) => getExpiryStatus(r.data.masaBerlaku) === 'soon').length,
-    expired: records.filter((r) => getExpiryStatus(r.data.masaBerlaku) === 'expired').length,
-  };
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#f1f0ee]">
@@ -1305,56 +1297,44 @@ export default function LicenseCertificationPage() {
         </div>
 
         {/* ── Filter row ── */}
-        <div className="flex flex-wrap items-end gap-3 mb-4 p-4 bg-white rounded-2xl border border-[#e5e0db]">
-          {/* Filter Perusahaan */}
-          <div className="flex-1 min-w-[180px]">
-            <label className="block text-[10px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">
-              Perusahaan
-            </label>
-            <div className="relative">
-              <select
-                value={filterPerusahaan}
-                onChange={(e) => setFilterPerusahaan(e.target.value)}
-                className="w-full appearance-none pl-3 pr-8 py-2 text-[13px] border border-[#c5c0bb] rounded-xl bg-white focus:outline-none focus:border-[#f15a22] focus:ring-2 focus:ring-[#f15a22]/20 transition-colors"
-              >
-                <option value="">Semua Perusahaan</option>
-                {perusahaanOptions.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#a09b96]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-3 mb-6">
+          <select
+            value={filterPerusahaan}
+            onChange={(e) => setFilterPerusahaan(e.target.value)}
+            className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors"
+          >
+            <option value="">Semua Perusahaan</option>
+            {perusahaanOptions.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
 
-          {/* Filter Jenis Sertifikat */}
-          <div className="flex-1 min-w-[220px]">
-            <label className="block text-[10px] font-bold uppercase tracking-wide text-[#6b6560] mb-1.5">
-              Jenis Sertifikat
-            </label>
-            <div className="relative">
-              <select
-                value={filterJenis}
-                onChange={(e) => setFilterJenis(e.target.value)}
-                className="w-full appearance-none pl-3 pr-8 py-2 text-[13px] border border-[#c5c0bb] rounded-xl bg-white focus:outline-none focus:border-[#f15a22] focus:ring-2 focus:ring-[#f15a22]/20 transition-colors"
-              >
-                <option value="">Semua Jenis</option>
-                {jenisOptions.map((j) => (
-                  <option key={j} value={j}>{j}</option>
-                ))}
-              </select>
-              <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#a09b96]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-          </div>
+          <select
+            value={filterJenis}
+            onChange={(e) => setFilterJenis(e.target.value)}
+            className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors"
+          >
+            <option value="">Semua Jenis Sertifikat</option>
+            {jenisOptions.map((j) => (
+              <option key={j} value={j}>{j}</option>
+            ))}
+          </select>
 
-          {/* Reset filter */}
+          <select
+            value={filterExpiry}
+            onChange={(e) => setFilterExpiry(e.target.value as 'all' | 'active' | 'soon' | 'expired')}
+            className="py-2.5 px-3.5 text-[13px] bg-white border border-[#c5c0bb] rounded-xl focus:outline-none focus:border-[#f15a22] transition-colors"
+          >
+            <option value="all">Semua Status Kedaluwarsa</option>
+            <option value="active">🟢 Aktif</option>
+            <option value="soon">🟡 Segera Berakhir</option>
+            <option value="expired">🔴 Kedaluwarsa</option>
+          </select>
+
           {activeFilterCount > 0 && (
             <button
               onClick={() => { setFilterPerusahaan(''); setFilterJenis(''); setFilterExpiry('all'); }}
-              className="flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 text-[13px] font-semibold text-red-600 bg-white border border-red-200 rounded-xl hover:bg-red-50 transition-colors whitespace-nowrap"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -1362,27 +1342,6 @@ export default function LicenseCertificationPage() {
               Reset ({activeFilterCount})
             </button>
           )}
-        </div>
-
-        {/* ── Masa Berlaku chips ── */}
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          {([
-            { value: 'all',     label: 'Semua',          count: expiryCounts.all,     cls: 'bg-[#231f20] text-white border-[#231f20]',           inactiveCls: 'bg-white border-[#e5e0db] text-[#6b6560] hover:border-[#c5c0bb]' },
-            { value: 'active',  label: '🟢 Aktif',        count: expiryCounts.active,  cls: 'bg-green-600 text-white border-green-600',            inactiveCls: 'bg-white border-[#e5e0db] text-[#6b6560] hover:border-green-300' },
-            { value: 'soon',    label: '🟡 Segera Berakhir', count: expiryCounts.soon, cls: 'bg-yellow-500 text-white border-yellow-500',          inactiveCls: 'bg-white border-[#e5e0db] text-[#6b6560] hover:border-yellow-300' },
-            { value: 'expired', label: '🔴 Kedaluwarsa',  count: expiryCounts.expired, cls: 'bg-red-600 text-white border-red-600',                inactiveCls: 'bg-white border-[#e5e0db] text-[#6b6560] hover:border-red-300' },
-          ] as const).map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setFilterExpiry(tab.value)}
-              className={`px-3.5 py-1.5 rounded-lg text-[12px] font-semibold transition-colors border ${
-                filterExpiry === tab.value ? tab.cls : tab.inactiveCls
-              }`}
-            >
-              {tab.label}
-              {!isLoading && <span className="ml-1.5 opacity-70">({tab.count})</span>}
-            </button>
-          ))}
         </div>
 
         {/* Info bar */}

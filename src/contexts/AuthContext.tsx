@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
 import { authApi, storeToken, getStoredToken, clearToken } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export interface User {
   id: string;
@@ -106,15 +107,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
+  // Listen for auth:unauthorized event dispatched by:
+  // - api.ts handleUnauthorized() saat endpoint data return 401
+  // - NotificationContext fetchNotifications() saat notification endpoint return 401
+  useEffect(() => {
+    const handleUnauthorizedEvent = () => {
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      const isAuthPage = path === '/login' || path === '/';
+
+      // Jangan proses jika sudah di halaman login — cegah redirect loop
+      if (isAuthPage) {
+        console.debug('[AuthContext] auth:unauthorized diabaikan — sudah di halaman auth');
+        return;
+      }
+
+      console.warn('[AuthContext] auth:unauthorized event diterima, logout user');
+      // Clear token (idempotent — aman dipanggil meski sudah di-clear sebelumnya)
+      clearToken();
+      // Clear user state
+      setUser(null);
+      // Tampilkan toast notifikasi sesi habis
+      toast.error('Sesi Anda telah berakhir. Silakan login kembali.', {
+        id: 'session-expired', // Deduplicate: cegah toast muncul berkali-kali
+        duration: 4000,
+        icon: '🔒',
+      });
+      // Redirect ke login setelah delay agar toast sempat muncul
+      setTimeout(() => { router.push('/login'); }, 1500);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorizedEvent);
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorizedEvent);
+    };
+  }, [router]);
+
   const login = useCallback(async (idKaryawan: string, password: string) => {
     console.log('🔵 AuthContext.login() START');
     setIsLoading(true);
     try {
       const response = await authApi.login(idKaryawan, password);
       console.log('🔵 AuthContext: API response received:', { userId: response.user.id, role: response.user.role });
+      console.log('🔵 AuthContext: token type:', typeof response.token, '| token value (first 30 chars):', String(response.token).substring(0, 30));
+      
+      // Guard: pastikan token ada dan bukan string "undefined"
+      if (!response.token || response.token === 'undefined') {
+        console.error('❌ AuthContext: token tidak valid dari backend:', response);
+        throw new Error('Token tidak diterima dari server');
+      }
       
       storeToken(response.token);
-      console.log('🔵 AuthContext: Token stored');
+      console.log('🔵 AuthContext: Token stored, verify from storage:', getStoredToken()?.substring(0, 30));
       
       // Map backend user to frontend User interface
       const mappedUser: User = {

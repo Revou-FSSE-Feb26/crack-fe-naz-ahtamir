@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 interface SidebarProps {
   user?: {
@@ -13,11 +14,18 @@ interface SidebarProps {
   onLogout?: () => void;
 }
 
+/** Level 3: sub-sub-menu — selalu punya href (ada page-nya) */
+interface SubSubItem {
+  label: string;
+  href: string;
+}
+
+/** Level 2: submenu — bisa punya href (link) atau children */
 interface SubItem {
   label: string;
   href?: string;
-  /** Jika ada children, item ini jadi sub-group yang bisa di-expand */
-  children?: { label: string; href: string }[];
+  /** children bisa berupa SubSubItem[] (2-level) atau SubItem[] (3-level: sub-elemen punya sub-sub-elemen) */
+  children?: SubSubItem[] | SubItem[];
 }
 
 interface MenuItem {
@@ -51,7 +59,6 @@ const menuItems: MenuItem[] = [
       </svg>
     ),
     subItems: [
-      { label: 'Semua Record', href: '/safety-compliance' },
       { label: 'K3 Policy', href: '/safety-compliance/k3-policy' },
       { label: 'Organization & Responsibility', href: '/safety-compliance/organization-responsibility' },
       { label: 'Worker Consultation (P2K3)', href: '/safety-compliance/worker-consultation' },
@@ -80,7 +87,6 @@ const menuItems: MenuItem[] = [
       </svg>
     ),
     subItems: [
-      { label: 'Semua Record', href: '/accident-prevention' },
       { label: 'Hazard Identification', href: '/accident-prevention/hazard-identification' },
       { label: 'Risk Control Implementation', href: '/accident-prevention/risk-control' },
       { label: 'Work Permit System', href: '/accident-prevention/work-permit' },
@@ -119,7 +125,6 @@ const menuItems: MenuItem[] = [
       </svg>
     ),
     subItems: [
-      { label: 'Semua Record', href: '/safety-competency' },
       { label: 'Training Management', href: '/safety-competency/training-management' },
       { label: 'Training Needs Analysis', href: '/safety-competency/training-needs-analysis' },
       { label: 'Safety Induction', href: '/safety-competency/safety-induction' },
@@ -142,74 +147,464 @@ const menuItems: MenuItem[] = [
       </svg>
     ),
     subItems: [
-      // Elemen 1
-      { label: '1. Pembangunan & Pemeliharaan Komitmen', href: '/smk3/komitmen' },
-      { label: '1.1 Kebijakan K3', href: '/smk3/komitmen/1-1' },
-      { label: '1.2 Tanggung Jawab & Wewenang', href: '/smk3/komitmen/1-2' },
-      { label: '1.3 Tinjauan Ulang & Evaluasi SMK3', href: '/smk3/komitmen/1-3' },
-      { label: '1.4 Keterlibatan & Konsultasi (P2K3)', href: '/smk3/komitmen/1-4' },
-      // Elemen 2
-      { label: '2. Pembuatan & Pendokumentasian Rencana K3', href: '/smk3/rencana-k3' },
-      { label: '2.1 Rencana Strategi K3 (HIRADC)', href: '/smk3/rencana-k3/2-1' },
-      { label: '2.2 Manual SMK3', href: '/smk3/rencana-k3/2-2' },
-      { label: '2.3 Peraturan & Persyaratan Lain K3', href: '/smk3/rencana-k3/2-3' },
-      { label: '2.4 Informasi K3', href: '/smk3/rencana-k3/2-4' },
-      // Elemen 3
-      { label: '3. Pengendalian Perancangan & Peninjauan Kontrak', href: '/smk3/perancangan-kontrak' },
-      { label: '3.1 Pengendalian Perancangan', href: '/smk3/perancangan-kontrak/3-1' },
-      { label: '3.2 Peninjauan Ulang Kontrak', href: '/smk3/perancangan-kontrak/3-2' },
-      // Elemen 4
-      { label: '4. Pengendalian Dokumen', href: '/smk3/dokumen' },
-      { label: '4.1 Persetujuan & Pengeluaran Dokumen', href: '/smk3/dokumen/4-1' },
-      { label: '4.2 Perubahan & Modifikasi Dokumen', href: '/smk3/dokumen/4-2' },
-      // Elemen 5
-      { label: '5. Pembelian & Pengendalian Produk', href: '/smk3/pembelian' },
-      { label: '5.1 Spesifikasi Pembelian Barang/Jasa', href: '/smk3/pembelian/5-1' },
-      { label: '5.2 Verifikasi Barang/Jasa yang Dibeli', href: '/smk3/pembelian/5-2' },
-      { label: '5.3 Pengendalian Barang/Jasa dari Pelanggan', href: '/smk3/pembelian/5-3' },
-      { label: '5.4 Kemampuan Telusur Produk', href: '/smk3/pembelian/5-4' },
-      // Elemen 6
-      { label: '6. Keamanan Bekerja Berdasarkan SMK3', href: '/smk3/keamanan-kerja' },
-      { label: '6.1 Sistem Kerja (prosedur, izin kerja, APD)', href: '/smk3/keamanan-kerja/6-1' },
-      { label: '6.2 Pengawasan', href: '/smk3/keamanan-kerja/6-2' },
-      { label: '6.3 Seleksi & Penempatan Personil', href: '/smk3/keamanan-kerja/6-3' },
-      { label: '6.4 Area Terbatas (LOTO, rambu K3)', href: '/smk3/keamanan-kerja/6-4' },
-      { label: '6.5 Pemeliharaan, Perbaikan & Perubahan Sarana', href: '/smk3/keamanan-kerja/6-5' },
-      { label: '6.6 Pelayanan (kontrak jasa K3)', href: '/smk3/keamanan-kerja/6-6' },
-      { label: '6.7 Kesiapan Tanggap Darurat', href: '/smk3/keamanan-kerja/6-7' },
-      { label: '6.8 Pertolongan Pertama pada Kecelakaan', href: '/smk3/keamanan-kerja/6-8' },
-      { label: '6.9 Rencana Pemulihan Kondisi Darurat', href: '/smk3/keamanan-kerja/6-9' },
-      // Elemen 7
-      { label: '7. Standar Pemantauan', href: '/smk3/pemantauan' },
-      { label: '7.1 Pemeriksaan Bahaya (Inspeksi)', href: '/smk3/pemantauan/7-1' },
-      { label: '7.2 Pemantauan/Pengukuran Lingkungan Kerja', href: '/smk3/pemantauan/7-2' },
-      { label: '7.3 Peralatan Pemeriksaan & Pengujian', href: '/smk3/pemantauan/7-3' },
-      { label: '7.4 Pemantauan Kesehatan Tenaga Kerja (MCU)', href: '/smk3/pemantauan/7-4' },
-      // Elemen 8
-      { label: '8. Pelaporan & Perbaikan Kekurangan', href: '/smk3/pelaporan' },
-      { label: '8.1 Pelaporan Bahaya', href: '/smk3/pelaporan/8-1' },
-      { label: '8.2 Pelaporan Kecelakaan & Penyakit Akibat Kerja', href: '/smk3/pelaporan/8-2' },
-      { label: '8.3 Pemeriksaan & Pengkajian Kecelakaan', href: '/smk3/pelaporan/8-3' },
-      { label: '8.4 Penanganan Masalah K3', href: '/smk3/pelaporan/8-4' },
-      // Elemen 9
-      { label: '9. Pengelolaan Material & Perpindahannya', href: '/smk3/material' },
-      { label: '9.1 Penanganan Material Manual & Mekanis', href: '/smk3/material/9-1' },
-      { label: '9.2 Sistem Pengangkutan, Penyimpanan & Pembuangan', href: '/smk3/material/9-2' },
-      { label: '9.3 Pengendalian Bahan Kimia Berbahaya (B3)', href: '/smk3/material/9-3' },
-      // Elemen 10
-      { label: '10. Pengumpulan & Penggunaan Data', href: '/smk3/data' },
-      { label: '10.1 Pengumpulan & Pengarsipan Catatan K3', href: '/smk3/data/10-1' },
-      { label: '10.2 Analisis Data & Laporan Kinerja K3', href: '/smk3/data/10-2' },
-      // Elemen 11
-      { label: '11. Pemeriksaan SMK3', href: '/smk3/pemeriksaan' },
-      { label: '11.1 Audit Internal SMK3', href: '/smk3/pemeriksaan/11-1' },
-      // Elemen 12
-      { label: '12. Pengembangan Keterampilan & Kemampuan', href: '/smk3/pelatihan' },
-      { label: '12.1 Strategi Pelatihan (TNA, program)', href: '/smk3/pelatihan/12-1' },
-      { label: '12.2 Pelatihan bagi Manajemen & Penyelia', href: '/smk3/pelatihan/12-2' },
-      { label: '12.3 Pelatihan bagi Tenaga Kerja', href: '/smk3/pelatihan/12-3' },
-      { label: '12.4 Pelatihan Pengenalan (Safety Induction)', href: '/smk3/pelatihan/12-4' },
-      { label: '12.5 Pelatihan Keahlian Khusus (Sertifikasi)', href: '/smk3/pelatihan/12-5' },
+      // ── Elemen 1 ──────────────────────────────────────────────────────────
+      {
+        label: '1. Pembangunan & Pemeliharaan Komitmen',
+        children: [
+          {
+            label: '1.1 Kebijakan K3',
+            children: [
+              { label: '1.1.1 Penetapan Kebijakan K3', href: '/smk3/komitmen/1-1/1-1-1' },
+              { label: '1.1.2 Konsultasi Penyusunan Kebijakan K3', href: '/smk3/komitmen/1-1/1-1-2' },
+              { label: '1.1.3 Sosialisasi Kebijakan K3', href: '/smk3/komitmen/1-1/1-1-3' },
+              { label: '1.1.4 Kebijakan Khusus K3', href: '/smk3/komitmen/1-1/1-1-4' },
+              { label: '1.1.5 Tinjauan Berkala Kebijakan K3', href: '/smk3/komitmen/1-1/1-1-5' },
+            ],
+          },
+          {
+            label: '1.2 Tanggung Jawab & Wewenang',
+            children: [
+              { label: '1.2.1 Distribusi Tanggung Jawab K3', href: '/smk3/komitmen/1-2/1-2-1' },
+              { label: '1.2.2 Penunjukan Personel K3', href: '/smk3/komitmen/1-2/1-2-2' },
+              { label: '1.2.3 Tanggung Jawab Pimpinan Unit', href: '/smk3/komitmen/1-2/1-2-3' },
+              { label: '1.2.4 Tanggung Jawab Pengurus SMK3', href: '/smk3/komitmen/1-2/1-2-4' },
+              { label: '1.2.5 Personel Tanggap Darurat', href: '/smk3/komitmen/1-2/1-2-5' },
+              { label: '1.2.6 Konsultasi Ahli K3', href: '/smk3/komitmen/1-2/1-2-6' },
+              { label: '1.2.7 Pelaporan Kinerja K3', href: '/smk3/komitmen/1-2/1-2-7' },
+            ],
+          },
+          {
+            label: '1.3 Tinjauan Ulang & Evaluasi SMK3',
+            children: [
+              { label: '1.3.1 Tinjauan Penerapan SMK3', href: '/smk3/komitmen/1-3/1-3-1' },
+              { label: '1.3.2 Tindak Lanjut Hasil Tinjauan', href: '/smk3/komitmen/1-3/1-3-2' },
+              { label: '1.3.3 Tinjauan Berkala SMK3', href: '/smk3/komitmen/1-3/1-3-3' },
+            ],
+          },
+          {
+            label: '1.4 Keterlibatan & Konsultasi (P2K3)',
+            children: [
+              { label: '1.4.1 Konsultasi Tenaga Kerja', href: '/smk3/komitmen/1-4/1-4-1' },
+              { label: '1.4.2 Prosedur Konsultasi Perubahan K3', href: '/smk3/komitmen/1-4/1-4-2' },
+              { label: '1.4.3 Pembentukan P2K3', href: '/smk3/komitmen/1-4/1-4-3' },
+              { label: '1.4.4 Penetapan Ketua P2K3', href: '/smk3/komitmen/1-4/1-4-4' },
+              { label: '1.4.5 Penetapan Sekretaris P2K3', href: '/smk3/komitmen/1-4/1-4-5' },
+              { label: '1.4.6 Pengembangan Kebijakan & Pengendalian Risiko P2K3', href: '/smk3/komitmen/1-4/1-4-6' },
+              { label: '1.4.7 Dokumentasi Struktur P2K3', href: '/smk3/komitmen/1-4/1-4-7' },
+              { label: '1.4.8 Pertemuan & Komunikasi P2K3', href: '/smk3/komitmen/1-4/1-4-8' },
+              { label: '1.4.9 Pelaporan Kegiatan P2K3', href: '/smk3/komitmen/1-4/1-4-9' },
+              { label: '1.4.10 Pembentukan Kelompok Kerja K3', href: '/smk3/komitmen/1-4/1-4-10' },
+              { label: '1.4.11 Dokumentasi Kelompok Kerja K3', href: '/smk3/komitmen/1-4/1-4-11' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 2 ──────────────────────────────────────────────────────────
+      {
+        label: '2. Pembuatan & Pendokumentasian Rencana K3',
+        children: [
+          {
+            label: '2.1 Rencana Strategi K3 (HIRADC)',
+            children: [
+              { label: '2.1.1 Prosedur HIRADC', href: '/smk3/rencana-k3/2-1/2-1-1' },
+              { label: '2.1.2 Kompetensi Pelaksana HIRADC', href: '/smk3/rencana-k3/2-1/2-1-2' },
+              { label: '2.1.3 Dasar Penyusunan Strategi K3', href: '/smk3/rencana-k3/2-1/2-1-3' },
+              { label: '2.1.4 Pengendalian Risiko melalui Strategi K3', href: '/smk3/rencana-k3/2-1/2-1-4' },
+              { label: '2.1.5 Rencana Kerja dan Sasaran K3', href: '/smk3/rencana-k3/2-1/2-1-5' },
+              { label: '2.1.6 Integrasi Rencana K3 dengan Sistem Manajemen', href: '/smk3/rencana-k3/2-1/2-1-6' },
+            ],
+          },
+          {
+            label: '2.2 Manual SMK3',
+            children: [
+              { label: '2.2.1 Manual SMK3', href: '/smk3/rencana-k3/2-2/2-2-1' },
+              { label: '2.2.2 Manual Khusus K3', href: '/smk3/rencana-k3/2-2/2-2-2' },
+              { label: '2.2.3 Aksesibilitas Manual SMK3', href: '/smk3/rencana-k3/2-2/2-2-3' },
+            ],
+          },
+          {
+            label: '2.3 Peraturan & Persyaratan Lain K3',
+            children: [
+              { label: '2.3.1 Identifikasi dan Pengelolaan Regulasi K3', href: '/smk3/rencana-k3/2-3/2-3-1' },
+              { label: '2.3.2 Penanggung Jawab Informasi Regulasi K3', href: '/smk3/rencana-k3/2-3/2-3-2' },
+              { label: '2.3.3 Integrasi Persyaratan Regulasi K3', href: '/smk3/rencana-k3/2-3/2-3-3' },
+              { label: '2.3.4 Tinjauan Perubahan Regulasi K3', href: '/smk3/rencana-k3/2-3/2-3-4' },
+            ],
+          },
+          {
+            label: '2.4 Informasi K3',
+            children: [
+              { label: '2.4.1 Distribusi Informasi K3', href: '/smk3/rencana-k3/2-4/2-4-1' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 3 ──────────────────────────────────────────────────────────
+      {
+        label: '3. Pengendalian Perancangan & Peninjauan Kontrak',
+        children: [
+          {
+            label: '3.1 Pengendalian Perancangan',
+            children: [
+              { label: '3.1.1 HIRADC pada Perancangan dan Modifikasi', href: '/smk3/perancangan-kontrak/3-1/3-1-1' },
+              { label: '3.1.2 Pengembangan Prosedur dan Instruksi Kerja K3', href: '/smk3/perancangan-kontrak/3-1/3-1-2' },
+              { label: '3.1.3 Verifikasi K3 pada Perancangan', href: '/smk3/perancangan-kontrak/3-1/3-1-3' },
+              { label: '3.1.4 Pengendalian Perubahan dan Modifikasi', href: '/smk3/perancangan-kontrak/3-1/3-1-4' },
+            ],
+          },
+          {
+            label: '3.2 Peninjauan Ulang Kontrak',
+            children: [
+              { label: '3.2.1 HIRADC pada Pengadaan Barang dan Jasa', href: '/smk3/perancangan-kontrak/3-2/3-2-1' },
+              { label: '3.2.2 Tinjauan Kontrak Berbasis Risiko K3', href: '/smk3/perancangan-kontrak/3-2/3-2-2' },
+              { label: '3.2.3 Evaluasi K3 Pemasok', href: '/smk3/perancangan-kontrak/3-2/3-2-3' },
+              { label: '3.2.4 Dokumentasi Tinjauan Kontrak', href: '/smk3/perancangan-kontrak/3-2/3-2-4' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 4 ──────────────────────────────────────────────────────────
+      {
+        label: '4. Pengendalian Dokumen',
+        children: [
+          {
+            label: '4.1 Persetujuan & Pengeluaran Dokumen',
+            children: [
+              { label: '4.1.1 Identifikasi Dokumen K3', href: '/smk3/dokumen/4-1/4-1-1' },
+              { label: '4.1.2 Distribusi Dokumen K3', href: '/smk3/dokumen/4-1/4-1-2' },
+              { label: '4.1.3 Penyimpanan Dokumen K3', href: '/smk3/dokumen/4-1/4-1-3' },
+              { label: '4.1.4 Pengendalian Dokumen Usang', href: '/smk3/dokumen/4-1/4-1-4' },
+            ],
+          },
+          {
+            label: '4.2 Perubahan & Modifikasi Dokumen',
+            children: [
+              { label: '4.2.1 Pengendalian Perubahan Dokumen', href: '/smk3/dokumen/4-2/4-2-1' },
+              { label: '4.2.2 Informasi Perubahan Dokumen', href: '/smk3/dokumen/4-2/4-2-2' },
+              { label: '4.2.3 Status dan Pengendalian Dokumen', href: '/smk3/dokumen/4-2/4-2-3' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 5 ──────────────────────────────────────────────────────────
+      {
+        label: '5. Pembelian & Pengendalian Produk',
+        children: [
+          {
+            label: '5.1 Spesifikasi Pembelian Barang/Jasa',
+            children: [
+              { label: '5.1.1 Verifikasi K3 pada Pembelian', href: '/smk3/pembelian/5-1/5-1-1' },
+              { label: '5.1.2 Spesifikasi Pembelian Berbasis K3', href: '/smk3/pembelian/5-1/5-1-2' },
+              { label: '5.1.3 Konsultasi K3 pada Pembelian', href: '/smk3/pembelian/5-1/5-1-3' },
+              { label: '5.1.4 Pertimbangan K3 Sebelum Penggunaan', href: '/smk3/pembelian/5-1/5-1-4' },
+              { label: '5.1.5 Evaluasi Persyaratan K3 Pemasok', href: '/smk3/pembelian/5-1/5-1-5' },
+            ],
+          },
+          {
+            label: '5.2 Verifikasi Barang/Jasa yang Dibeli',
+            children: [
+              { label: '5.2.1 Verifikasi Barang dan Jasa', href: '/smk3/pembelian/5-2/5-2-1' },
+            ],
+          },
+          {
+            label: '5.3 Pengendalian Barang/Jasa dari Pelanggan',
+            children: [
+              { label: '5.3.1 Identifikasi Risiko Barang Pasokan Pelanggan', href: '/smk3/pembelian/5-3/5-3-1' },
+            ],
+          },
+          {
+            label: '5.4 Kemampuan Telusur Produk',
+            children: [
+              { label: '5.4.1 Identifikasi Produk dalam Proses Produksi', href: '/smk3/pembelian/5-4/5-4-1' },
+              { label: '5.4.2 Penelusuran Produk Berisiko K3', href: '/smk3/pembelian/5-4/5-4-2' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 6 ──────────────────────────────────────────────────────────
+      {
+        label: '6. Keamanan Bekerja Berdasarkan SMK3',
+        children: [
+          {
+            label: '6.1 Sistem Kerja (prosedur, izin kerja, APD)',
+            children: [
+              { label: '6.1.1 Identifikasi Bahaya dan Penilaian Risiko', href: '/smk3/keamanan-kerja/6-1/6-1-1' },
+              { label: '6.1.2 Penetapan Pengendalian Risiko', href: '/smk3/keamanan-kerja/6-1/6-1-2' },
+              { label: '6.1.3 Prosedur Pengendalian Risiko', href: '/smk3/keamanan-kerja/6-1/6-1-3' },
+              { label: '6.1.4 Kepatuhan Regulasi pada Pengendalian Risiko', href: '/smk3/keamanan-kerja/6-1/6-1-4' },
+              { label: '6.1.5 Sistem Izin Kerja', href: '/smk3/keamanan-kerja/6-1/6-1-5' },
+              { label: '6.1.6 Penyediaan dan Pemeliharaan APD', href: '/smk3/keamanan-kerja/6-1/6-1-6' },
+              { label: '6.1.7 Kelayakan APD', href: '/smk3/keamanan-kerja/6-1/6-1-7' },
+              { label: '6.1.8 Evaluasi Pengendalian Risiko', href: '/smk3/keamanan-kerja/6-1/6-1-8' },
+            ],
+          },
+          {
+            label: '6.2 Pengawasan',
+            children: [
+              { label: '6.2.1 Pengawasan Pelaksanaan Pekerjaan', href: '/smk3/keamanan-kerja/6-2/6-2-1' },
+              { label: '6.2.2 Pengawasan Berdasarkan Risiko dan Kompetensi', href: '/smk3/keamanan-kerja/6-2/6-2-2' },
+              { label: '6.2.3 Keterlibatan Pengawas dalam HIRADC', href: '/smk3/keamanan-kerja/6-2/6-2-3' },
+              { label: '6.2.4 Investigasi Kecelakaan oleh Pengawas', href: '/smk3/keamanan-kerja/6-2/6-2-4' },
+              { label: '6.2.5 Keterlibatan Pengawas dalam Konsultasi', href: '/smk3/keamanan-kerja/6-2/6-2-5' },
+            ],
+          },
+          {
+            label: '6.3 Seleksi & Penempatan Personil',
+            children: [
+              { label: '6.3.1 Persyaratan Kesehatan dan Kompetensi Kerja', href: '/smk3/keamanan-kerja/6-3/6-3-1' },
+              { label: '6.3.2 Penempatan Kerja Berdasarkan Kompetensi', href: '/smk3/keamanan-kerja/6-3/6-3-2' },
+            ],
+          },
+          {
+            label: '6.4 Area Terbatas (LOTO, rambu K3)',
+            children: [
+              { label: '6.4.1 Penilaian Risiko Area Terbatas', href: '/smk3/keamanan-kerja/6-4/6-4-1' },
+              { label: '6.4.2 Pengendalian Akses Area Terbatas', href: '/smk3/keamanan-kerja/6-4/6-4-2' },
+              { label: '6.4.3 Penyediaan Fasilitas Kerja', href: '/smk3/keamanan-kerja/6-4/6-4-3' },
+              { label: '6.4.4 Pemasangan Rambu K3', href: '/smk3/keamanan-kerja/6-4/6-4-4' },
+            ],
+          },
+          {
+            label: '6.5 Pemeliharaan, Perbaikan & Perubahan Sarana',
+            children: [
+              { label: '6.5.1 Pemeriksaan dan Pemeliharaan Sarana Produksi', href: '/smk3/keamanan-kerja/6-5/6-5-1' },
+              { label: '6.5.2 Dokumentasi Pemeliharaan Sarana Produksi', href: '/smk3/keamanan-kerja/6-5/6-5-2' },
+              { label: '6.5.3 Sertifikasi Sarana dan Peralatan', href: '/smk3/keamanan-kerja/6-5/6-5-3' },
+              { label: '6.5.4 Kompetensi Petugas Pemeliharaan', href: '/smk3/keamanan-kerja/6-5/6-5-4' },
+              { label: '6.5.5 Pengendalian Perubahan Sarana Produksi', href: '/smk3/keamanan-kerja/6-5/6-5-5' },
+              { label: '6.5.6 Permintaan Perbaikan Sarana Produksi', href: '/smk3/keamanan-kerja/6-5/6-5-6' },
+              { label: '6.5.7 Sistem Tag Out', href: '/smk3/keamanan-kerja/6-5/6-5-7' },
+              { label: '6.5.8 Sistem Lock Out', href: '/smk3/keamanan-kerja/6-5/6-5-8' },
+              { label: '6.5.9 Keselamatan Saat Pemeliharaan', href: '/smk3/keamanan-kerja/6-5/6-5-9' },
+              { label: '6.5.10 Persetujuan Penggunaan Pasca Pemeliharaan', href: '/smk3/keamanan-kerja/6-5/6-5-10' },
+            ],
+          },
+          {
+            label: '6.6 Pelayanan (kontrak jasa K3)',
+            children: [
+              { label: '6.6.1 Pengendalian Jasa Kontrak oleh Perusahaan', href: '/smk3/keamanan-kerja/6-6/6-6-1' },
+              { label: '6.6.2 Pengendalian Jasa Kontrak dari Pihak Ketiga', href: '/smk3/keamanan-kerja/6-6/6-6-2' },
+            ],
+          },
+          {
+            label: '6.7 Kesiapan Tanggap Darurat',
+            children: [
+              { label: '6.7.1 Identifikasi dan Prosedur Keadaan Darurat', href: '/smk3/keamanan-kerja/6-7/6-7-1' },
+              { label: '6.7.2 Penyediaan dan Pengujian Sarana Darurat', href: '/smk3/keamanan-kerja/6-7/6-7-2' },
+              { label: '6.7.3 Pelatihan Keadaan Darurat', href: '/smk3/keamanan-kerja/6-7/6-7-3' },
+              { label: '6.7.4 Penetapan Petugas Darurat', href: '/smk3/keamanan-kerja/6-7/6-7-4' },
+              { label: '6.7.5 Komunikasi Prosedur Darurat', href: '/smk3/keamanan-kerja/6-7/6-7-5' },
+              { label: '6.7.6 Pemeriksaan Peralatan Darurat', href: '/smk3/keamanan-kerja/6-7/6-7-6' },
+              { label: '6.7.7 Penempatan dan Kecukupan Sarana Darurat', href: '/smk3/keamanan-kerja/6-7/6-7-7' },
+            ],
+          },
+          {
+            label: '6.8 Pertolongan Pertama pada Kecelakaan',
+            children: [
+              { label: '6.8.1 Evaluasi Sistem P3K', href: '/smk3/keamanan-kerja/6-8/6-8-1' },
+              { label: '6.8.2 Penunjukan dan Pelatihan Petugas P3K', href: '/smk3/keamanan-kerja/6-8/6-8-2' },
+            ],
+          },
+          {
+            label: '6.9 Rencana Pemulihan Kondisi Darurat',
+            children: [
+              { label: '6.9.1 Pemulihan Pasca Kecelakaan Kerja', href: '/smk3/keamanan-kerja/6-9/6-9-1' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 7 ──────────────────────────────────────────────────────────
+      {
+        label: '7. Standar Pemantauan',
+        children: [
+          {
+            label: '7.1 Pemeriksaan Bahaya (Inspeksi)',
+            children: [
+              { label: '7.1.1 Pelaksanaan Inspeksi K3', href: '/smk3/pemantauan/7-1/7-1-1' },
+              { label: '7.1.2 Kompetensi Petugas Inspeksi', href: '/smk3/pemantauan/7-1/7-1-2' },
+              { label: '7.1.3 Keterlibatan Tenaga Kerja dalam Inspeksi', href: '/smk3/pemantauan/7-1/7-1-3' },
+              { label: '7.1.4 Penggunaan Checklist Inspeksi', href: '/smk3/pemantauan/7-1/7-1-4' },
+              { label: '7.1.5 Pelaporan Hasil Inspeksi', href: '/smk3/pemantauan/7-1/7-1-5' },
+              { label: '7.1.6 Penanggung Jawab Tindak Perbaikan', href: '/smk3/pemantauan/7-1/7-1-6' },
+              { label: '7.1.7 Pemantauan Tindakan Perbaikan', href: '/smk3/pemantauan/7-1/7-1-7' },
+            ],
+          },
+          {
+            label: '7.2 Pemantauan/Pengukuran Lingkungan Kerja',
+            children: [
+              { label: '7.2.1 Pemantauan Lingkungan Kerja', href: '/smk3/pemantauan/7-2/7-2-1' },
+              { label: '7.2.2 Ruang Lingkup Pengukuran Lingkungan Kerja', href: '/smk3/pemantauan/7-2/7-2-2' },
+              { label: '7.2.3 Kompetensi Petugas Pengukuran', href: '/smk3/pemantauan/7-2/7-2-3' },
+            ],
+          },
+          {
+            label: '7.3 Peralatan Pemeriksaan & Pengujian',
+            children: [
+              { label: '7.3.1 Pengendalian Alat Ukur dan Uji K3', href: '/smk3/pemantauan/7-3/7-3-1' },
+              { label: '7.3.2 Kalibrasi dan Pemeliharaan Alat', href: '/smk3/pemantauan/7-3/7-3-2' },
+            ],
+          },
+          {
+            label: '7.4 Pemantauan Kesehatan Tenaga Kerja (MCU)',
+            children: [
+              { label: '7.4.1 Pemantauan Kesehatan Tenaga Kerja', href: '/smk3/pemantauan/7-4/7-4-1' },
+              { label: '7.4.2 Identifikasi Kebutuhan Pemeriksaan Kesehatan', href: '/smk3/pemantauan/7-4/7-4-2' },
+              { label: '7.4.3 Pemeriksaan Kesehatan oleh Dokter Penunjuk', href: '/smk3/pemantauan/7-4/7-4-3' },
+              { label: '7.4.4 Pelayanan Kesehatan Kerja', href: '/smk3/pemantauan/7-4/7-4-4' },
+              { label: '7.4.5 Dokumentasi Kesehatan Kerja', href: '/smk3/pemantauan/7-4/7-4-5' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 8 ──────────────────────────────────────────────────────────
+      {
+        label: '8. Pelaporan & Perbaikan Kekurangan',
+        children: [
+          {
+            label: '8.1 Pelaporan Bahaya',
+            children: [
+              { label: '8.1.1 Pelaporan Bahaya K3', href: '/smk3/pelaporan/8-1/8-1-1' },
+            ],
+          },
+          {
+            label: '8.2 Pelaporan Kecelakaan & Penyakit Akibat Kerja',
+            children: [
+              { label: '8.2.1 Pelaporan dan Pencatatan Insiden K3', href: '/smk3/pelaporan/8-2/8-2-1' },
+            ],
+          },
+          {
+            label: '8.3 Pemeriksaan & Pengkajian Kecelakaan',
+            children: [
+              { label: '8.3.1 Prosedur Investigasi Kecelakaan Kerja', href: '/smk3/pelaporan/8-3/8-3-1' },
+              { label: '8.3.2 Kompetensi Investigator K3', href: '/smk3/pelaporan/8-3/8-3-2' },
+              { label: '8.3.3 Pelaporan Hasil Investigasi', href: '/smk3/pelaporan/8-3/8-3-3' },
+              { label: '8.3.4 Penanggung Jawab Tindak Perbaikan', href: '/smk3/pelaporan/8-3/8-3-4' },
+              { label: '8.3.5 Komunikasi Hasil Perbaikan', href: '/smk3/pelaporan/8-3/8-3-5' },
+              { label: '8.3.6 Pemantauan Tindakan Perbaikan', href: '/smk3/pelaporan/8-3/8-3-6' },
+            ],
+          },
+          {
+            label: '8.4 Penanganan Masalah K3',
+            children: [
+              { label: '8.4.1 Penanganan Permasalahan K3', href: '/smk3/pelaporan/8-4/8-4-1' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 9 ──────────────────────────────────────────────────────────
+      {
+        label: '9. Pengelolaan Material & Perpindahannya',
+        children: [
+          {
+            label: '9.1 Penanganan Material Manual & Mekanis',
+            children: [
+              { label: '9.1.1 HIRADC Penanganan Material', href: '/smk3/material/9-1/9-1-1' },
+              { label: '9.1.2 Kompetensi Petugas Penanganan Material', href: '/smk3/material/9-1/9-1-2' },
+              { label: '9.1.3 Pengendalian Risiko Penanganan Material', href: '/smk3/material/9-1/9-1-3' },
+              { label: '9.1.4 Penanganan Tumpahan dan Kebocoran', href: '/smk3/material/9-1/9-1-4' },
+            ],
+          },
+          {
+            label: '9.2 Sistem Pengangkutan, Penyimpanan & Pembuangan',
+            children: [
+              { label: '9.2.1 Penyimpanan dan Pemindahan Material', href: '/smk3/material/9-2/9-2-1' },
+              { label: '9.2.2 Pengendalian Material Rusak dan Kadaluarsa', href: '/smk3/material/9-2/9-2-2' },
+              { label: '9.2.3 Pembuangan Material Secara Aman', href: '/smk3/material/9-2/9-2-3' },
+            ],
+          },
+          {
+            label: '9.3 Pengendalian Bahan Kimia Berbahaya (B3)',
+            children: [
+              { label: '9.3.1 Pengelolaan Bahan Kimia Berbahaya', href: '/smk3/material/9-3/9-3-1' },
+              { label: '9.3.2 Ketersediaan MSDS', href: '/smk3/material/9-3/9-3-2' },
+              { label: '9.3.3 Identifikasi dan Label BKB', href: '/smk3/material/9-3/9-3-3' },
+              { label: '9.3.4 Pemasangan Rambu Bahaya BKB', href: '/smk3/material/9-3/9-3-4' },
+              { label: '9.3.5 Kompetensi Penanganan BKB', href: '/smk3/material/9-3/9-3-5' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 10 ─────────────────────────────────────────────────────────
+      {
+        label: '10. Pengumpulan & Penggunaan Data',
+        children: [
+          {
+            label: '10.1 Pengumpulan & Pengarsipan Catatan K3',
+            children: [
+              { label: '10.1.1 Pengelolaan Catatan K3', href: '/smk3/data/10-1/10-1-1' },
+              { label: '10.1.2 Pemeliharaan Regulasi dan Standar K3', href: '/smk3/data/10-1/10-1-2' },
+              { label: '10.1.3 Kerahasiaan Catatan K3', href: '/smk3/data/10-1/10-1-3' },
+              { label: '10.1.4 Catatan Kompensasi dan Rehabilitasi', href: '/smk3/data/10-1/10-1-4' },
+            ],
+          },
+          {
+            label: '10.2 Analisis Data & Laporan Kinerja K3',
+            children: [
+              { label: '10.2.1 Pengumpulan dan Analisis Data K3', href: '/smk3/data/10-2/10-2-1' },
+              { label: '10.2.2 Pelaporan Kinerja K3', href: '/smk3/data/10-2/10-2-2' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 11 ─────────────────────────────────────────────────────────
+      {
+        label: '11. Pemeriksaan SMK3',
+        children: [
+          {
+            label: '11.1 Audit Internal SMK3',
+            children: [
+              { label: '11.1.1 Pelaksanaan Audit Internal SMK3', href: '/smk3/pemeriksaan/11-1/11-1-1' },
+              { label: '11.1.2 Kompetensi Auditor Internal SMK3', href: '/smk3/pemeriksaan/11-1/11-1-2' },
+              { label: '11.1.3 Pelaporan dan Tindak Lanjut Audit', href: '/smk3/pemeriksaan/11-1/11-1-3' },
+            ],
+          },
+        ],
+      },
+      // ── Elemen 12 ─────────────────────────────────────────────────────────
+      {
+        label: '12. Pengembangan Keterampilan & Kemampuan',
+        children: [
+          {
+            label: '12.1 Strategi Pelatihan (TNA, program)',
+            children: [
+              { label: '12.1.1 Analisis Kebutuhan Pelatihan K3', href: '/smk3/pelatihan/12-1/12-1-1' },
+              { label: '12.1.2 Perencanaan Pelatihan K3', href: '/smk3/pelatihan/12-1/12-1-2' },
+              { label: '12.1.3 Penetapan Jenis Pelatihan K3', href: '/smk3/pelatihan/12-1/12-1-3' },
+              { label: '12.1.4 Kompetensi Penyedia Pelatihan', href: '/smk3/pelatihan/12-1/12-1-4' },
+              { label: '12.1.5 Fasilitas dan Sumber Daya Pelatihan', href: '/smk3/pelatihan/12-1/12-1-5' },
+              { label: '12.1.6 Dokumentasi Pelatihan K3', href: '/smk3/pelatihan/12-1/12-1-6' },
+              { label: '12.1.7 Tinjauan Program Pelatihan', href: '/smk3/pelatihan/12-1/12-1-7' },
+            ],
+          },
+          {
+            label: '12.2 Pelatihan bagi Manajemen & Penyelia',
+            children: [
+              { label: '12.2.1 Pelatihan K3 untuk Manajemen', href: '/smk3/pelatihan/12-2/12-2-1' },
+              { label: '12.2.2 Pelatihan K3 untuk Pengawas dan Penyelia', href: '/smk3/pelatihan/12-2/12-2-2' },
+            ],
+          },
+          {
+            label: '12.3 Pelatihan bagi Tenaga Kerja',
+            children: [
+              { label: '12.3.1 Pelatihan K3 Tenaga Kerja', href: '/smk3/pelatihan/12-3/12-3-1' },
+              { label: '12.3.2 Pelatihan atas Perubahan Proses', href: '/smk3/pelatihan/12-3/12-3-2' },
+              { label: '12.3.3 Pelatihan Penyegaran K3', href: '/smk3/pelatihan/12-3/12-3-3' },
+            ],
+          },
+          {
+            label: '12.4 Pelatihan Pengenalan (Safety Induction)',
+            children: [
+              { label: '12.4.1 Briefing K3 untuk Pengunjung dan Mitra Kerja', href: '/smk3/pelatihan/12-4/12-4-1' },
+            ],
+          },
+          {
+            label: '12.5 Pelatihan Keahlian Khusus (Sertifikasi)',
+            children: [
+              { label: '12.5.1 Pengendalian Lisensi dan Kualifikasi Kerja', href: '/smk3/pelatihan/12-5/12-5-1' },
+            ],
+          },
+        ],
+      },
     ],
   },
 ];
@@ -223,23 +618,59 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     menuItems.forEach((item) => {
-      if (item.subItems?.some((s) =>
-        (s.href && pathname.startsWith(s.href)) ||
-        s.children?.some((c) => pathname.startsWith(c.href))
-      )) {
+      if (item.subItems?.some((s) => {
+        if (s.href && pathname.startsWith(s.href)) return true;
+        return s.children?.some((c) => {
+          if ('href' in c && c.href && pathname.startsWith(c.href)) return true;
+          if ('children' in c) {
+            const si = c as SubItem;
+            return si.children?.some((gc) => 'href' in gc && gc.href && pathname.startsWith(gc.href));
+          }
+          return false;
+        });
+      })) {
         initial[item.id] = true;
       }
     });
     return initial;
   });
 
-  // Track sub-group expand (misal Documentation & Records)
+  // Track sub-group expand (level 2 — submenu yang punya children)
   const [openSubGroups, setOpenSubGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     menuItems.forEach((item) => {
       item.subItems?.forEach((sub) => {
-        if (sub.children?.some((c) => pathname.startsWith(c.href))) {
-          initial[sub.label] = true;
+        // Level 2: sub punya children (bisa SubSubItem atau SubItem)
+        if (sub.children) {
+          // Cek apakah ada children yang active (level 3 link)
+          const level3Active = sub.children.some((c) => {
+            if ('href' in c && c.href) return pathname.startsWith(c.href);
+            // Jika level 3 juga punya children (tidak terjadi di sini, tapi future-proof)
+            return false;
+          });
+          if (level3Active) initial[`${item.id}__${sub.label}`] = true;
+        }
+      });
+    });
+    return initial;
+  });
+
+  // Track level-3 expand (sub-sub-group, untuk smk3-audit: elemen → sub-elemen → sub-sub-elemen)
+  const [openLevel3Groups, setOpenLevel3Groups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    menuItems.forEach((item) => {
+      item.subItems?.forEach((sub) => {
+        if (sub.children) {
+          sub.children.forEach((c) => {
+            // Jika child level 2 juga punya children (level 3 sub-group)
+            if ('children' in c && c.children) {
+              const subItem = c as SubItem;
+              const level3Active = subItem.children?.some(
+                (gc) => 'href' in gc && gc.href && pathname.startsWith(gc.href)
+              );
+              if (level3Active) initial[`${item.id}__${sub.label}__${subItem.label}`] = true;
+            }
+          });
         }
       });
     });
@@ -250,8 +681,12 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
     setOpenMenus((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const toggleSubGroup = (label: string) => {
-    setOpenSubGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  const toggleSubGroup = (key: string) => {
+    setOpenSubGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleLevel3Group = (key: string) => {
+    setOpenLevel3Groups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const isActive = (href: string) =>
@@ -262,29 +697,54 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   // ── Search logic ──────────────────────────────────────────────────────────
   const q = search.trim().toLowerCase();
 
-  // Filter menu items berdasarkan query pencarian
+  // Filter menu items berdasarkan query pencarian (support 3 level)
   const filteredMenuItems = q
     ? menuItems
         .map((item) => {
-          // Cek apakah label menu utama cocok
           const menuMatches = item.label.toLowerCase().includes(q);
 
-          // Filter sub-items yang cocok (termasuk children di sub-group)
           const matchedSubs = item.subItems
             ?.map((s) => {
-              // Sub-item biasa
               if (!s.children) {
+                // Sub-item biasa tanpa children
                 return s.label.toLowerCase().includes(q) ? s : null;
               }
-              // Sub-group (punya children): filter children yang cocok
-              const matchedChildren = s.children.filter((c) =>
-                c.label.toLowerCase().includes(q)
-              );
-              const groupMatches = s.label.toLowerCase().includes(q);
-              if (groupMatches || matchedChildren.length > 0) {
-                return { ...s, children: groupMatches ? s.children : matchedChildren };
+
+              // Sub-group dengan children — bisa 2-level atau 3-level
+              const isThreeLevel = s.children.some((c) => 'children' in c && (c as SubItem).children);
+
+              if (isThreeLevel) {
+                // 3-level: filter children (sub-elemen) dan grand-children (sub-sub-elemen)
+                const matchedChildren = s.children
+                  .map((c) => {
+                    const si = c as SubItem;
+                    const siMatches = si.label.toLowerCase().includes(q);
+                    const matchedGc = si.children?.filter((gc) =>
+                      gc.label.toLowerCase().includes(q)
+                    );
+                    if (siMatches || (matchedGc && matchedGc.length > 0)) {
+                      return { ...si, children: siMatches ? si.children : matchedGc };
+                    }
+                    return null;
+                  })
+                  .filter(Boolean) as SubItem[];
+
+                const groupMatches = s.label.toLowerCase().includes(q);
+                if (groupMatches || matchedChildren.length > 0) {
+                  return { ...s, children: groupMatches ? s.children : matchedChildren };
+                }
+                return null;
+              } else {
+                // 2-level biasa
+                const matchedChildren = s.children.filter((c) =>
+                  c.label.toLowerCase().includes(q)
+                );
+                const groupMatches = s.label.toLowerCase().includes(q);
+                if (groupMatches || matchedChildren.length > 0) {
+                  return { ...s, children: groupMatches ? s.children : matchedChildren };
+                }
+                return null;
               }
-              return null;
             })
             .filter(Boolean) as typeof item.subItems;
 
@@ -428,10 +888,20 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
             const isMenuActive =
               item.href
                 ? isActive(item.href)
-                : item.subItems?.some((s) =>
-                    (s.href ? isActive(s.href) : false) ||
-                    s.children?.some((c) => isActive(c.href))
-                  );
+                : item.subItems?.some((s) => {
+                    if (s.href && isActive(s.href)) return true;
+                    return s.children?.some((c) => {
+                      if ('href' in c && c.href && isActive(c.href)) return true;
+                      // Level 3 (smk3-audit): sub.children adalah SubItem[] yang punya children SubSubItem[]
+                      if ('children' in c) {
+                        const subItem = c as SubItem;
+                        return subItem.children?.some(
+                          (gc) => 'href' in gc && gc.href && isActive(gc.href)
+                        );
+                      }
+                      return false;
+                    });
+                  });
 
             // Saat ada query: paksa buka semua menu yang masuk hasil filter
             const isOpen = q ? true : openMenus[item.id];
@@ -486,7 +956,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                     <div
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
                         isOpen
-                          ? item.id === 'smk3-audit' ? 'max-h-[3000px] opacity-100' : 'max-h-[600px] opacity-100'
+                          ? item.id === 'smk3-audit' ? 'max-h-[20000px] opacity-100' : 'max-h-[600px] opacity-100'
                           : 'max-h-0 opacity-0'
                       }`}
                     >
@@ -510,22 +980,49 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                             );
                           };
 
-                          // ── Sub-group (punya children, misal Documentation & Records) ──
+                          // ── Sub-group (punya children) ──
                           if (sub.children) {
-                            const subGroupOpen = q ? true : !!openSubGroups[sub.label];
-                            const subGroupActive = sub.children.some((c) => isActive(c.href));
+                            const subGroupKey = `${item.id}__${sub.label}`;
+                            const subGroupOpen = q ? true : !!openSubGroups[subGroupKey];
+
+                            // Deteksi apakah ini 3-level (children adalah SubItem[] dengan children) atau 2-level biasa
+                            const isThreeLevel = sub.children.some((c) => 'children' in c && (c as SubItem).children);
+
+                            // Active check: cek sampai level 3
+                            const subGroupActive = sub.children.some((c) => {
+                              if ('href' in c && c.href && isActive(c.href)) return true;
+                              if ('children' in c) {
+                                const si = c as SubItem;
+                                return si.children?.some((gc) => 'href' in gc && gc.href && isActive(gc.href));
+                              }
+                              return false;
+                            });
+
+                            // Deteksi apakah ini elemen header (misal "1. Pembangunan...")
+                            const isElemHeader = /^\d+\.\s/.test(sub.label);
+
                             return (
                               <div key={sub.label}>
-                                {/* Header sub-group */}
+                                {/* Header level 2 — bisa elemen header atau sub-group biasa */}
                                 <button
-                                  onClick={() => !q && toggleSubGroup(sub.label)}
-                                  className={`w-full flex items-center gap-2.5 rounded-md text-[12px] my-px py-1.5 px-3 pl-11 transition-colors text-left ${
-                                    subGroupActive
-                                      ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
-                                      : 'text-[#8a8580] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
+                                  onClick={() => !q && toggleSubGroup(subGroupKey)}
+                                  className={`w-full flex items-center gap-2.5 rounded-md text-[12px] my-px transition-colors text-left ${
+                                    isElemHeader
+                                      ? `py-2 px-3 pl-8 font-semibold tracking-wide ${
+                                          subGroupActive
+                                            ? 'text-[#f15a22] bg-[rgba(241,90,34,0.08)]'
+                                            : 'text-[#c5c0bb] hover:bg-[rgba(241,90,34,0.08)] hover:text-white'
+                                        }`
+                                      : `py-1.5 px-3 pl-11 ${
+                                          subGroupActive
+                                            ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
+                                            : 'text-[#8a8580] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
+                                        }`
                                   }`}
                                 >
-                                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${subGroupActive ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
+                                  {!isElemHeader && (
+                                    <span className={`w-1 h-1 rounded-full flex-shrink-0 ${subGroupActive ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
+                                  )}
                                   <span className="flex-1">{highlightLabel(sub.label)}</span>
                                   {!q && (
                                     <svg
@@ -538,26 +1035,94 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                                     </svg>
                                   )}
                                 </button>
-                                {/* Children sub-group */}
-                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${subGroupOpen ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                  <div className="pl-2">
+
+                                {/* Children level 2 */}
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${subGroupOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                  <div className={isElemHeader ? 'pl-2' : 'pl-2'}>
                                     {sub.children.map((child) => {
-                                      const childActive = isActive(child.href);
-                                      return (
-                                        <Link
-                                          key={child.href}
-                                          href={child.href}
-                                          onClick={() => { setMobileOpen(false); setSearch(''); }}
-                                          className={`flex items-center gap-2 rounded-md text-[11px] my-px py-1.5 px-3 pl-14 transition-colors ${
-                                            childActive
-                                              ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
-                                              : 'text-[#8a8580] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
-                                          }`}
-                                        >
-                                          <span className={`w-1 h-1 rounded-full flex-shrink-0 ${childActive ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
-                                          {highlightLabel(child.label)}
-                                        </Link>
-                                      );
+                                      // ── 3-level: child adalah SubItem yang punya children (sub-sub-group) ──
+                                      if (isThreeLevel && 'children' in child) {
+                                        const subItem = child as SubItem;
+                                        const level3Key = `${item.id}__${sub.label}__${subItem.label}`;
+                                        const level3Open = q ? true : !!openLevel3Groups[level3Key];
+                                        const level3Active = subItem.children?.some(
+                                          (gc) => 'href' in gc && gc.href && isActive(gc.href)
+                                        );
+                                        return (
+                                          <div key={subItem.label}>
+                                            {/* Header level 3 (sub-elemen) */}
+                                            <button
+                                              onClick={() => !q && toggleLevel3Group(level3Key)}
+                                              className={`w-full flex items-center gap-2 rounded-md text-[11.5px] my-px py-1.5 px-3 pl-11 transition-colors text-left ${
+                                                level3Active
+                                                  ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
+                                                  : 'text-[#8a8580] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
+                                              }`}
+                                            >
+                                              <span className={`w-1 h-1 rounded-full flex-shrink-0 ${level3Active ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
+                                              <span className="flex-1">{highlightLabel(subItem.label)}</span>
+                                              {!q && (
+                                                <svg
+                                                  width="9" height="9"
+                                                  viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                  strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                                  className={`flex-shrink-0 text-[#6b6560] transition-transform duration-200 ${level3Open ? 'rotate-90' : ''}`}
+                                                >
+                                                  <path d="m9 18 6-6-6-6" />
+                                                </svg>
+                                              )}
+                                            </button>
+                                            {/* Sub-sub-menu (level 4 visual = link ke halaman) */}
+                                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${level3Open ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                              <div className="pl-2">
+                                                {subItem.children?.map((grandChild) => {
+                                                  if (!('href' in grandChild)) return null;
+                                                  const gc = grandChild as SubSubItem;
+                                                  const gcActive = isActive(gc.href);
+                                                  return (
+                                                    <Link
+                                                      key={gc.href}
+                                                      href={gc.href}
+                                                      onClick={() => { setMobileOpen(false); setSearch(''); }}
+                                                      className={`flex items-center gap-2 rounded-md text-[11px] my-px py-1.5 px-3 pl-14 transition-colors ${
+                                                        gcActive
+                                                          ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
+                                                          : 'text-[#7a7570] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
+                                                      }`}
+                                                    >
+                                                      <span className={`w-1 h-1 rounded-full flex-shrink-0 ${gcActive ? 'bg-[#f15a22]' : 'bg-[#5a5550]'}`} />
+                                                      {highlightLabel(gc.label)}
+                                                    </Link>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
+                                      // ── 2-level biasa: child adalah SubSubItem (langsung link) ──
+                                      if ('href' in child) {
+                                        const gc = child as SubSubItem;
+                                        const childActive = isActive(gc.href);
+                                        return (
+                                          <Link
+                                            key={gc.href}
+                                            href={gc.href}
+                                            onClick={() => { setMobileOpen(false); setSearch(''); }}
+                                            className={`flex items-center gap-2 rounded-md text-[11px] my-px py-1.5 px-3 pl-14 transition-colors ${
+                                              childActive
+                                                ? 'text-[#f15a22] bg-[rgba(241,90,34,0.06)]'
+                                                : 'text-[#8a8580] hover:bg-[rgba(241,90,34,0.06)] hover:text-white'
+                                            }`}
+                                          >
+                                            <span className={`w-1 h-1 rounded-full flex-shrink-0 ${childActive ? 'bg-[#f15a22]' : 'bg-[#6b6560]'}`} />
+                                            {highlightLabel(gc.label)}
+                                          </Link>
+                                        );
+                                      }
+
+                                      return null;
                                     })}
                                   </div>
                                 </div>

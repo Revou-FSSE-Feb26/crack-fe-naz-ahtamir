@@ -4,13 +4,15 @@ const BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 /**
  * GET /api/notifications?limit=10
- * Proxy ke NestJS backend — forward Authorization header dari klien.
- * userId diambil dari JWT di backend, bukan dari query param.
+ *
+ * Proxy ke NestJS backend. Token diambil dari Authorization header client.
+ * App menggunakan custom JWT (bukan NextAuth), token ada di localStorage
+ * dan dikirim dari NotificationContext sebagai Bearer token.
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
 
-  if (!authHeader) {
+  if (!authHeader?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -25,7 +27,6 @@ export async function GET(request: NextRequest) {
         "Content-Type": "application/json",
         Authorization: authHeader,
       },
-      // Jangan cache — notifikasi harus selalu fresh
       cache: "no-store",
     });
 

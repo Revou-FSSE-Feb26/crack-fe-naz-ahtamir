@@ -562,15 +562,16 @@ interface InvestigasiModalProps {
   inv: Investigation | null;
   onClose: () => void;
   onSaved: (inv: Investigation) => void;
+  currentUserId?: string;
+  currentUserName?: string;
 }
 
-function InvestigasiModal({ isOpen, inv, onClose, onSaved }: InvestigasiModalProps) {
+function InvestigasiModal({ isOpen, inv, onClose, onSaved, currentUserId, currentUserName }: InvestigasiModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
   const [lampiranFile, setLampiranFile] = useState<File | null>(null);
   const refLampiran = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
-    investigatorId:       "",
     tanggalInvestigasi:   "",
     rootCause:            "",
     temuanInvestigasi:    "",
@@ -581,7 +582,6 @@ function InvestigasiModal({ isOpen, inv, onClose, onSaved }: InvestigasiModalPro
   useEffect(() => {
     if (!isOpen || !inv) return;
     setForm({
-      investigatorId:       inv.investigatorId ?? "",
       tanggalInvestigasi:   inv.tanggalInvestigasi?.split("T")[0] ?? "",
       rootCause:            inv.rootCause ?? "",
       temuanInvestigasi:    inv.temuanInvestigasi ?? "",
@@ -602,8 +602,10 @@ function InvestigasiModal({ isOpen, inv, onClose, onSaved }: InvestigasiModalPro
     try {
       const fd = new FormData();
       (Object.entries(form) as [string, string][]).forEach(([k, v]) => { if (v) fd.append(k, v); });
+      // Kirim investigatorId dari user yang sedang login
+      if (currentUserId) fd.append("investigatorId", currentUserId);
       if (lampiranFile) fd.append("lampiranLaporan", lampiranFile);
-      else if (inv.lampiranLaporan) fd.append("lampiranLaporan", inv.lampiranLaporan);
+      // Jangan kirim path lama sebagai string — biarkan kosong jika tidak ada file baru
       const updated = await investigationApi.update(inv.id, fd);
       onSaved(updated);
       onClose();
@@ -634,15 +636,20 @@ function InvestigasiModal({ isOpen, inv, onClose, onSaved }: InvestigasiModalPro
         <form id="inv-investigasi-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {error && <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-[13px] rounded-xl">{error}</div>}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Tanggal Investigasi</label>
-              <input type="date" value={form.tanggalInvestigasi} onChange={(e) => f("tanggalInvestigasi")(e.target.value)} className={inputCls} />
+          {/* Info investigator otomatis */}
+          {currentUserName && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <div>
+                <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">Investigator</p>
+                <p className="text-[13px] font-semibold text-blue-900">{currentUserName}</p>
+              </div>
             </div>
-            <div>
-              <label className={labelCls}>ID Investigator</label>
-              <input type="text" placeholder="User ID" value={form.investigatorId} onChange={(e) => f("investigatorId")(e.target.value)} className={inputCls} />
-            </div>
+          )}
+
+          <div>
+            <label className={labelCls}>Tanggal Investigasi</label>
+            <input type="date" value={form.tanggalInvestigasi} onChange={(e) => f("tanggalInvestigasi")(e.target.value)} className={inputCls} />
           </div>
 
           {([
@@ -1249,6 +1256,8 @@ export default function InvestigasiKecelakaanPage() {
         inv={investigasiTarget}
         onClose={() => setInvestigasiTarget(null)}
         onSaved={(updated) => { onSaved(updated); setInvestigasiTarget(null); }}
+        currentUserId={user?.id}
+        currentUserName={user?.nama}
       />
 
       {detailInv && user && (

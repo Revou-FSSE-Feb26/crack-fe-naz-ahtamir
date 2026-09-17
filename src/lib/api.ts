@@ -66,6 +66,21 @@ export function clearToken(): void {
 }
 
 /**
+ * Handle 401 Unauthorized secara terpusat.
+ * - Clear token dari localStorage
+ * - Dispatch custom event agar AuthContext menampilkan toast dan redirect ke /login
+ *
+ * TIDAK redirect langsung dari sini — AuthContext yang handle redirect agar
+ * toast sempat tampil dan tidak ada double-redirect.
+ */
+function handleUnauthorized(): void {
+  clearToken();
+  if (typeof window === 'undefined') return;
+  // AuthContext listener akan: setUser(null) + toast + redirect ke /login
+  window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+}
+
+/**
  * Generic fetch wrapper with auth header and error handling
  */
 async function fetchWithAuth<T = any>(
@@ -94,17 +109,8 @@ async function fetchWithAuth<T = any>(
 
   // Handle 401 Unauthorized
   if (response.status === 401) {
-    clearToken();
-    // Hanya redirect jika ini bukan background polling (ada token saat request)
-    // dan user sedang di halaman authenticated
-    if (typeof window !== 'undefined' && token) {
-      const path = window.location.pathname;
-      const isAuthPage = path === '/login' || path === '/';
-      if (!isAuthPage) {
-        window.location.href = '/login';
-      }
-    }
-    throw new Error('Unauthorized. Please login again.');
+    handleUnauthorized();
+    throw new Error('Sesi habis. Silakan login kembali.');
   }
 
   // Handle 403 Forbidden
@@ -126,10 +132,19 @@ async function fetchWithAuth<T = any>(
  */
 export const authApi = {
   login: async (idKaryawan: string, password: string): Promise<AuthResponse> => {
-    return fetchWithAuth('/auth/login', {
+    // Gunakan raw fetch — JANGAN pakai fetchWithAuth karena:
+    // 1. Belum ada token saat login
+    // 2. fetchWithAuth throw pesan generic untuk 401, bukan pesan dari backend
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idKaryawan, password }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'ID Karyawan atau password salah');
+    }
+    return res.json();
   },
 
   logout: async (): Promise<void> => {
@@ -255,11 +270,8 @@ export const uploadsApi = {
 
     // Handle 401 Unauthorized
     if (response.status === 401) {
-      clearToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new Error('Unauthorized. Please login again.');
+      handleUnauthorized();
+      throw new Error('Sesi habis. Silakan login kembali.');
     }
 
     if (!response.ok) {
@@ -365,11 +377,8 @@ export const recordsApi = {
 
     // Handle 401
     if (response.status === 401) {
-      clearToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new Error('Unauthorized. Please login again.');
+      handleUnauthorized();
+      throw new Error('Sesi habis. Silakan login kembali.');
     }
 
     if (!response.ok) {
@@ -399,11 +408,8 @@ export const recordsApi = {
     });
 
     if (response.status === 401) {
-      clearToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new Error('Unauthorized. Please login again.');
+      handleUnauthorized();
+      throw new Error('Sesi habis. Silakan login kembali.');
     }
 
     if (!response.ok) {
@@ -443,11 +449,8 @@ export const k3PolicyApi = {
     });
 
     if (response.status === 401) {
-      clearToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new Error('Unauthorized. Please login again.');
+      handleUnauthorized();
+      throw new Error('Sesi habis. Silakan login kembali.');
     }
 
     if (!response.ok) {
@@ -474,11 +477,8 @@ export const k3PolicyApi = {
     });
 
     if (response.status === 401) {
-      clearToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new Error('Unauthorized. Please login again.');
+      handleUnauthorized();
+      throw new Error('Sesi habis. Silakan login kembali.');
     }
 
     if (!response.ok) {
@@ -611,7 +611,7 @@ export const documentsApi = {
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { method: 'POST', headers, body: formData });
-    if (res.status === 401) { clearToken(); window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (res.status === 401) { handleUnauthorized(); throw new Error('Sesi habis. Silakan login kembali.'); }
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
     return res.json();
   },
@@ -629,7 +629,7 @@ export const documentsApi = {
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { method: 'PUT', headers, body: formData });
-    if (res.status === 401) { clearToken(); window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (res.status === 401) { handleUnauthorized(); throw new Error('Sesi habis. Silakan login kembali.'); }
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
     return res.json();
   },
@@ -714,7 +714,7 @@ export const emergencyDrillApi = {
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { method: 'POST', headers, body: formData });
-    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (res.status === 401) { handleUnauthorized(); throw new Error('Sesi habis. Silakan login kembali.'); }
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
     return res.json();
   },
@@ -725,7 +725,7 @@ export const emergencyDrillApi = {
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { method: 'PUT', headers, body: formData });
-    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (res.status === 401) { handleUnauthorized(); throw new Error('Sesi habis. Silakan login kembali.'); }
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
     return res.json();
   },
@@ -846,7 +846,7 @@ export const investigationApi = {
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { method: 'POST', headers, body: formData });
-    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (res.status === 401) { handleUnauthorized(); throw new Error('Sesi habis. Silakan login kembali.'); }
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
     return res.json();
   },
@@ -857,7 +857,7 @@ export const investigationApi = {
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { method: 'PUT', headers, body: formData });
-    if (res.status === 401) { clearToken(); if (typeof window !== 'undefined') window.location.href = '/login'; throw new Error('Unauthorized'); }
+    if (res.status === 401) { handleUnauthorized(); throw new Error('Sesi habis. Silakan login kembali.'); }
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `API error: ${res.status}`); }
     return res.json();
   },
