@@ -1,6 +1,6 @@
 # HAAMI — Hazard Analysis & Awareness Management Integrated
 
-HAAMI adalah platform manajemen Keselamatan dan Kesehatan Kerja (K3) berbasis web yang dirancang untuk membantu organisasi dalam mengelola kepatuhan SMK3, identifikasi bahaya, pelaporan temuan, dan pemantauan kinerja keselamatan secara terpadu. Dibangun dengan teknologi web modern, HAAMI menyediakan solusi end-to-end untuk memenuhi persyaratan **SMK3 (Sistem Manajemen Keselamatan dan Kesehatan Kerja)** berdasarkan PP No. 50 Tahun 2012.
+HAAMI is a web-based Occupational Health and Safety (OHS) management platform designed to help organizations manage SMK3 compliance, hazard identification, findings reporting, and safety performance monitoring in an integrated manner. Built with modern web technologies, HAAMI provides an end-to-end solution to meet **SMK3 (Occupational Health and Safety Management System)** requirements based on PP No. 50 of 2012.
 
 ---
 
@@ -8,128 +8,128 @@ HAAMI adalah platform manajemen Keselamatan dan Kesehatan Kerja (K3) berbasis we
 
 | | URL |
 |---|---|
-| **Frontend (Production)** | _Tambahkan link deployment Vercel di sini_ |
-| **Backend API** | _Tambahkan link deployment backend di sini_ |
-| **API Docs** | _Tambahkan link dokumentasi API di sini_ |
+| **Frontend (Production)** | https://crack-fe-naz-ahtamir.vercel.app |
+| **Backend API** | https://haami-demo.onrender.com |
+| **API Docs** | https://haami-demo.onrender.com/api/docs |
 
 ---
 
-## ✨ Fitur Utama
+## ✨ Key Features
 
-### Manajemen SMK3
-- **12 Elemen SMK3**: Implementasi lengkap 12 elemen SMK3 sesuai regulasi PP 50/2012, mencakup komitmen, rencana K3, pengendalian dokumen, keamanan kerja, pelatihan, pemantauan, hingga pelaporan.
-- **CRUD Temuan (Findings)**: Pencatatan, pengelolaan, dan pelacakan temuan ketidaksesuaian dengan alur approval (OPEN → INPG → CLSD).
-- **Dashboard SMK3**: Ringkasan status kepatuhan elemen-elemen SMK3 dalam satu halaman.
+### SMK3 Management
+- **12 SMK3 Elements**: Complete implementation of 12 SMK3 elements according to PP 50/2012 regulations, covering commitment, OHS planning, document control, work safety, training, monitoring, and reporting.
+- **Findings CRUD**: Recording, management, and tracking of non-conformity findings with approval workflow (OPEN → INPG → CLSD).
+- **SMK3 Dashboard**: Summary of SMK3 element compliance status on a single page.
 
 ### Safety Compliance
-- **Kebijakan K3**: Upload dan manajemen dokumen kebijakan K3.
-- **Legal Compliance**: Pemantauan kepatuhan regulasi dan perundangan K3.
-- **K3 Planning & Organization**: Pengelolaan rencana K3 dan struktur organisasi K3.
-- **Worker Consultation**: Dokumentasi konsultasi dengan pekerja.
-- **Procurement & Contractor Control**: Kontrol pengadaan dan kontraktor.
-- **Documentation Records**: Manajemen rekaman dan dokumentasi K3.
+- **OHS Policy**: Upload and management of OHS policy documents.
+- **Legal Compliance**: Monitoring of OHS regulations and legislative compliance.
+- **OHS Planning & Organization**: Management of OHS plans and organizational structure.
+- **Worker Consultation**: Documentation of worker consultations.
+- **Procurement & Contractor Control**: Control of procurement and contractors.
+- **Documentation Records**: Management of OHS records and documentation.
 
 ### Safety Competency
-- **Safety Induction**: Manajemen program induksi keselamatan untuk karyawan baru.
-- **Training Management**: Perencanaan dan pelaksanaan pelatihan K3.
-- **Training Needs Analysis**: Analisis kebutuhan pelatihan berdasarkan risiko.
-- **License & Certification**: Pemantauan sertifikasi dan lisensi K3 karyawan.
-- **Safety Briefing & Culture**: Program budaya keselamatan dan safety briefing.
-- **Competency Management**: Manajemen kompetensi K3 per jabatan.
+- **Safety Induction**: Management of safety induction programs for new employees.
+- **Training Management**: Planning and implementation of OHS training.
+- **Training Needs Analysis**: Training needs analysis based on risk.
+- **License & Certification**: Monitoring of employee OHS certifications and licenses.
+- **Safety Briefing & Culture**: Safety culture programs and safety briefings.
+- **Competency Management**: OHS competency management per position.
 
 ### Accident Prevention
-- **Hazard Identification**: Identifikasi bahaya dengan kategorisasi level risiko (Low / Medium / High / Critical).
-- **Risk Control**: Pengendalian risiko berdasarkan hirarki kontrol.
-- **Incident & Near Miss Reporting**: Pelaporan kecelakaan dan hampir celaka.
-- **Safety Inspection**: Jadwal dan pelaksanaan inspeksi keselamatan.
-- **Work Permit System**: Sistem izin kerja digital untuk pekerjaan berisiko tinggi.
-- **PPE Management**: Manajemen Alat Pelindung Diri.
-- **LOTO (Lockout/Tagout)**: Prosedur LOTO untuk pekerjaan pada energi berbahaya.
-- **Chemical Safety**: Pengelolaan bahan kimia berbahaya.
-- **Equipment Safety**: Pemantauan keselamatan peralatan.
-- **Emergency Preparedness**: Perencanaan dan kesiapsiagaan darurat.
-- **Workplace Monitoring**: Pemantauan lingkungan kerja.
-- **Safety Observation**: Program observasi keselamatan.
+- **Hazard Identification**: Hazard identification with risk level categorization (Low / Medium / High / Critical).
+- **Risk Control**: Risk control based on hierarchy of controls.
+- **Incident & Near Miss Reporting**: Reporting of accidents and near misses.
+- **Safety Inspection**: Schedule and implementation of safety inspections.
+- **Work Permit System**: Digital work permit system for high-risk work.
+- **PPE Management**: Personal Protective Equipment management.
+- **LOTO (Lockout/Tagout)**: LOTO procedures for hazardous energy work.
+- **Chemical Safety**: Management of hazardous chemicals.
+- **Equipment Safety**: Equipment safety monitoring.
+- **Emergency Preparedness**: Emergency planning and preparedness.
+- **Workplace Monitoring**: Workplace environment monitoring.
+- **Safety Observation**: Safety observation programs.
 
-### Fitur Sistem
-- **Autentikasi & RBAC**: Login, forgot/reset/change password, dan kontrol akses berbasis peran (Admin, Supervisor, User).
-- **Notifikasi Real-time**: Polling notifikasi otomatis setiap 30 detik untuk approval dan update temuan.
-- **Ekspor Data**: Export temuan ke format **Excel (.xlsx)** dan **PDF** dengan tanda tangan digital.
-- **Admin Panel**: Manajemen pengguna (aktivasi, deaktivasi, atur supervisor).
-- **Profil & Pengaturan**: Manajemen profil pengguna.
-- **Signature Digital**: Input tanda tangan digital pada formulir temuan.
+### System Features
+- **Authentication & RBAC**: Login, forgot/reset/change password, and role-based access control (Admin, Supervisor, User).
+- **Real-time Notifications**: Automatic notification polling every 30 seconds for approvals and finding updates.
+- **Data Export**: Export findings to **Excel (.xlsx)** and **PDF** formats with digital signatures.
+- **Admin Panel**: User management (activation, deactivation, assign supervisor).
+- **Profile & Settings**: User profile management.
+- **Digital Signature**: Digital signature input on finding forms.
 
 ---
 
 ## 🛠 Tech Stack
 
 ### Frontend
-| Teknologi | Versi | Kegunaan |
+| Technology | Version | Usage |
 |-----------|-------|----------|
-| Next.js | 16.2.6 | React framework dengan App Router & SSR |
+| Next.js | 16.2.6 | React framework with App Router & SSR |
 | React | 19.2.4 | UI library |
 | TypeScript | ^5 | Type-safe development |
 | Tailwind CSS | ^4 | Utility-first CSS framework |
-| NextAuth.js | ^4.24.14 | Autentikasi & session management |
-| React Hook Form | ^7.82.0 | Form state & validasi |
+| NextAuth.js | ^4.24.14 | Authentication & session management |
+| React Hook Form | ^7.82.0 | Form state & validation |
 | Zod | ^4.4.3 | Schema validation |
 | react-hot-toast | ^2.6.0 | Toast notifications |
-| jsPDF | ^4.2.1 | Generate laporan PDF |
-| xlsx | ^0.18.5 | Export data ke Excel |
-| html2canvas | ^1.4.1 | Render halaman ke canvas (PDF export) |
-| react-signature-canvas | ^1.1.0-alpha.2 | Input tanda tangan digital |
+| jsPDF | ^4.2.1 | Generate PDF reports |
+| xlsx | ^0.18.5 | Export data to Excel |
+| html2canvas | ^1.4.1 | Render page to canvas (PDF export) |
+| react-signature-canvas | ^1.1.0-alpha.2 | Digital signature input |
 | Bun | latest | JavaScript runtime & package manager |
 
 ### Backend & Database
-| Teknologi | Kegunaan |
+| Technology | Usage |
 |-----------|----------|
-| Next.js API Routes | Backend API terintegrasi (autentikasi, users, notifications, SMK3 data) |
-| MongoDB + Mongoose | Database utama via API routes |
-| bcryptjs | Hashing password |
+| Next.js API Routes | Integrated backend API (authentication, users, notifications, SMK3 data) |
+| MongoDB + Mongoose | Main database via API routes |
+| bcryptjs | Password hashing |
 | NextAuth JWT | Token-based authentication |
 
-> **Catatan**: Arsitektur menggunakan **Next.js fullstack** — API routes di `src/app/api/` menangani backend logic, sehingga tidak memerlukan server terpisah untuk deployment dasar.
+> **Note**: Architecture uses **Next.js fullstack** — API routes in `src/app/api/` handle backend logic, so no separate server is needed for basic deployment.
 
 ### DevOps & Tools
-| Teknologi | Kegunaan |
+| Technology | Usage |
 |-----------|----------|
-| Vercel | Deployment frontend (rekomendasi) |
-| Docker Compose | Orkestrasi kontainer untuk development lokal |
+| Vercel | Frontend deployment (recommended) |
+| Docker Compose | Container orchestration for local development |
 | GitHub Actions | CI/CD pipeline |
 | pgAdmin 4 | Database management UI |
 
 ---
 
-## 📁 Struktur Proyek
+## 📁 Project Structure
 
 ```
 crack-fe-naz-ahtamir/
 ├── apps/
-│   └── backend/                    # Backend API (NestJS - opsional, terpisah)
+│   └── backend/                    # Backend API (NestJS - optional, separate)
 ├── public/
-│   ├── uploads/                    # File upload lokal (dokumen, PDF)
-│   ├── videos/                     # Asset video
+│   ├── uploads/                    # Local file uploads (documents, PDF)
+│   ├── videos/                     # Video assets
 │   └── fonts/                      # Custom fonts
-├── scripts/                        # Script utilitas (seed data, import karyawan)
+├── scripts/                        # Utility scripts (seed data, import employees)
 │   ├── createAdmin.ts
 │   ├── importKaryawan.ts
 │   ├── generate-safety-competency.js
 │   └── ...
 ├── src/
 │   ├── app/                        # Next.js App Router
-│   │   ├── page.tsx                # Landing page publik
-│   │   ├── login/                  # Halaman login
-│   │   ├── forgot-password/        # Lupa password
+│   │   ├── page.tsx                # Public landing page
+│   │   ├── login/                  # Login page
+│   │   ├── forgot-password/        # Forgot password
 │   │   ├── reset-password/         # Reset password
-│   │   ├── change-password/        # Ganti password
-│   │   ├── contact/                # Halaman kontak
-│   │   ├── (authenticated)/        # Route group (butuh autentikasi)
-│   │   │   ├── dashboard/          # Dashboard utama
-│   │   │   ├── findings/           # Manajemen temuan
-│   │   │   ├── notifications/      # Pusat notifikasi
-│   │   │   ├── profile/            # Profil pengguna
-│   │   │   └── settings/           # Pengaturan akun
-│   │   ├── smk3/                   # 12 Elemen SMK3
+│   │   ├── change-password/        # Change password
+│   │   ├── contact/                # Contact page
+│   │   ├── (authenticated)/        # Route group (requires authentication)
+│   │   │   ├── dashboard/          # Main dashboard
+│   │   │   ├── findings/           # Findings management
+│   │   │   ├── notifications/      # Notification center
+│   │   │   ├── profile/            # User profile
+│   │   │   └── settings/           # Account settings
+│   │   ├── smk3/                   # 12 SMK3 Elements
 │   │   │   ├── komitmen/
 │   │   │   ├── rencana-k3/
 │   │   │   ├── dokumen/
@@ -142,57 +142,57 @@ crack-fe-naz-ahtamir/
 │   │   │   ├── pemeriksaan/
 │   │   │   ├── perancangan-kontrak/
 │   │   │   └── data/
-│   │   ├── safety-compliance/      # Modul kepatuhan K3
-│   │   ├── safety-competency/      # Modul kompetensi K3
-│   │   ├── accident-prevention/    # Modul pencegahan kecelakaan
-│   │   ├── admin/                  # Panel admin
-│   │   ├── dashboard-smk3/         # Dashboard SMK3 khusus
+│   │   ├── safety-compliance/      # OHS compliance module
+│   │   ├── safety-competency/      # OHS competency module
+│   │   ├── accident-prevention/    # Accident prevention module
+│   │   ├── admin/                  # Admin panel
+│   │   ├── dashboard-smk3/         # SMK3-specific dashboard
 │   │   └── api/                    # Next.js API Routes (backend)
-│   │       ├── auth/               # Autentikasi (NextAuth, forgot/reset password)
-│   │       ├── users/              # Manajemen pengguna
-│   │       ├── notifications/      # Sistem notifikasi
-│   │       ├── smk3-data/          # Data temuan SMK3
-│   │       ├── kebijakan/          # Kebijakan K3
-│   │       └── konsultasi/         # Konsultasi K3
-│   ├── components/                 # Komponen React reusable
-│   │   ├── ui/                     # Button, Input, Modal, Badge, dll.
+│   │       ├── auth/               # Authentication (NextAuth, forgot/reset password)
+│   │       ├── users/              # User management
+│   │       ├── notifications/      # Notification system
+│   │       ├── smk3-data/          # SMK3 finding data
+│   │       ├── kebijakan/          # OHS policies
+│   │       └── konsultasi/         # OHS consultations
+│   ├── components/                 # Reusable React components
+│   │   ├── ui/                     # Button, Input, Modal, Badge, etc.
 │   │   ├── layout/                 # Sidebar, Header, NotificationDropdown
 │   │   ├── dashboard/              # StatCard, RecentFindings
 │   │   ├── findings/               # FindingForm
 │   │   ├── CrudPage.tsx            # Generic CRUD component
-│   │   ├── SMK3DataList.tsx        # List data SMK3
-│   │   └── RecordTable.tsx         # Tabel data generik
+│   │   ├── SMK3DataList.tsx        # SMK3 data list
+│   │   └── RecordTable.tsx         # Generic data table
 │   ├── contexts/                   # React Context
-│   │   ├── AuthContext.tsx         # State autentikasi global
-│   │   └── NotificationContext.tsx # State notifikasi global
+│   │   ├── AuthContext.tsx         # Global authentication state
+│   │   └── NotificationContext.tsx # Global notification state
 │   ├── hooks/                      # Custom React hooks
 │   │   └── useNotificationPolling.ts
 │   ├── lib/                        # Utility & API clients
-│   │   ├── api.ts                  # API client utama
+│   │   ├── api.ts                  # Main API client
 │   │   ├── auth.ts                 # Auth utilities
-│   │   ├── exportFindingToPDF.ts   # Export PDF
-│   │   └── exportFindingsToExcel.ts # Export Excel
-│   ├── data/                       # Data statis (form configs, jobdesk)
+│   │   ├── exportFindingToPDF.ts   # PDF export
+│   │   └── exportFindingsToExcel.ts # Excel export
+│   ├── data/                       # Static data (form configs, job descriptions)
 │   ├── models/                     # Mongoose models
 │   └── types/                      # TypeScript type definitions
 ├── .env.local                      # Environment variables
-├── .env.local.example              # Contoh konfigurasi environment
-├── next.config.ts                  # Konfigurasi Next.js
+├── .env.local.example              # Example environment configuration
+├── next.config.ts                  # Next.js configuration
 ├── package.json                    # Dependencies & scripts
-└── tsconfig.json                   # Konfigurasi TypeScript
+└── tsconfig.json                   # TypeScript configuration
 ```
 
 ---
 
-## 🚀 Instalasi & Penggunaan
+## 🚀 Installation & Usage
 
-### Prasyarat
+### Prerequisites
 
-- **Node.js** 18.17 atau lebih baru
-- **Bun** (direkomendasikan) atau npm/yarn
-- **MongoDB** (lokal atau MongoDB Atlas)
+- **Node.js** 18.17 or newer
+- **Bun** (recommended) or npm/yarn
+- **MongoDB** (local or MongoDB Atlas)
 
-### Langkah Instalasi
+### Installation Steps
 
 **1. Clone repository**
 ```bash
@@ -203,63 +203,63 @@ cd crack-fe-naz-ahtamir
 **2. Install dependencies**
 ```bash
 bun install
-# atau
+# or
 npm install
 ```
 
-**3. Konfigurasi environment**
+**3. Configure environment**
 ```bash
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local` sesuai konfigurasi Anda:
+Edit `.env.local` according to your configuration:
 ```env
 # MongoDB Connection
 MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/<dbname>
 
 # NextAuth Configuration
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=<generate dengan: openssl rand -base64 32>
+NEXTAUTH_SECRET=<generate with: openssl rand -base64 32>
 
-# Backend API (jika menggunakan NestJS terpisah)
+# Backend API (if using separate NestJS)
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
 NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
 ```
 
-**4. Buat akun admin pertama**
+**4. Create first admin account**
 ```bash
 bun run create-admin
 ```
 
-**5. Jalankan development server**
+**5. Run development server**
 ```bash
 bun run dev
 ```
 
-Aplikasi akan berjalan di **http://localhost:3000**
+The application will run at **http://localhost:3000**
 
 ---
 
-### Scripts yang Tersedia
+### Available Scripts
 
-| Script | Perintah | Keterangan |
+| Script | Command | Description |
 |--------|----------|------------|
-| Development | `bun run dev` | Jalankan dev server dengan hot reload |
-| Build | `bun run build` | Build untuk production |
-| Start | `bun run start` | Jalankan production server |
-| Lint | `bun run lint` | Jalankan ESLint |
-| Create Admin | `bun run create-admin` | Buat akun admin pertama |
-| Import Karyawan | `bun run import-karyawan` | Import data karyawan dari CSV |
+| Development | `bun run dev` | Run dev server with hot reload |
+| Build | `bun run build` | Build for production |
+| Start | `bun run start` | Run production server |
+| Lint | `bun run lint` | Run ESLint |
+| Create Admin | `bun run create-admin` | Create first admin account |
+| Import Employees | `bun run import-karyawan` | Import employee data from CSV |
 
 ---
 
-### Akun Default (setelah setup)
+### Default Accounts (after setup)
 
-| Role | Email | Akses |
+| Role | Email | Access |
 |------|-------|-------|
-| Admin | Dibuat via `bun run create-admin` | Penuh — manajemen user, semua modul |
-| Supervisor | Dibuat oleh admin | Approval temuan, lihat semua data |
-| User | Dibuat oleh admin | Buat & lihat temuan sendiri |
+| Admin | Created via `bun run create-admin` | Full — user management, all modules |
+| Supervisor | Created by admin | Finding approvals, view all data |
+| User | Created by admin | Create & view own findings |
 
 ---
 
@@ -288,11 +288,11 @@ erDiagram
 
     SMK3_DATA {
         uuid id PK
-        varchar subSubElementId "referensi elemen SMK3"
+        varchar subSubElementId "SMK3 element reference"
         varchar title
         enum findingStatus "OPEN | INPG | CLSD"
-        jsonb data "form fields fleksibel"
-        jsonb files "array path file"
+        jsonb data "flexible form fields"
+        jsonb files "array file paths"
         varchar createdBy
         uuid createdById FK
         varchar approvedBy
@@ -325,137 +325,119 @@ erDiagram
     }
 ```
 
-### Penjelasan Relasi
+### Relationship Explanation
 
-| Relasi | Keterangan |
+| Relation | Description |
 |--------|------------|
-| `USERS` → `SMK3_DATA` (creates) | Satu user dapat membuat banyak temuan |
-| `USERS` → `SMK3_DATA` (approves) | Satu supervisor/admin dapat menyetujui banyak temuan |
-| `USERS` → `NOTIFICATIONS` | Satu user menerima banyak notifikasi |
-| `SMK3_DATA` → `NOTIFICATIONS` | Satu temuan dapat memicu banyak notifikasi (ke creator & supervisors) |
-| `USERS` → `AUDIT_LOGS` | Setiap aksi user tercatat di audit log |
-| `SMK3_DATA` → `AUDIT_LOGS` | Setiap perubahan temuan dilacak di audit log |
+| `USERS` → `SMK3_DATA` (creates) | One user can create many findings |
+| `USERS` → `SMK3_DATA` (approves) | One supervisor/admin can approve many findings |
+| `USERS` → `NOTIFICATIONS` | One user receives many notifications |
+| `SMK3_DATA` → `NOTIFICATIONS` | One finding can trigger many notifications (to creator & supervisors) |
+| `USERS` → `AUDIT_LOGS` | Every user action is recorded in audit logs |
+| `SMK3_DATA` → `AUDIT_LOGS` | Every finding change is tracked in audit logs |
 
-### Alur Status Temuan
+### Finding Status Flow
 
 ```
 OPEN  ──► INPG (In Progress)  ──► CLSD (Closed)
   │                                     ▲
   └─────────────────────────────────────┘
-         (langsung approve ke CLSD)
+         (direct approval to CLSD)
 ```
 
 ---
 
 ## 📸 Screenshots
 
-> **Catatan**: Tambahkan screenshot aplikasi di folder `public/screenshots/` lalu update path di bawah ini.
+> **Note**: Add application screenshots to the `public/screenshots/` folder then update the paths below.
 
 ### Landing Page
 ![Landing Page](public/screenshots/landing-page.png)
-> Halaman publik HAAMI dengan informasi produk, fitur, dan CTA login.
+> HAAMI public page with product information, features, and login CTA.
 
-### Dashboard Utama
+### Main Dashboard
 ![Dashboard](public/screenshots/dashboard.png)
-> Dashboard menampilkan statistik temuan (OPEN/INPG/CLSD), grafik tren, dan recent findings.
+> Dashboard showing finding statistics (OPEN/INPG/CLSD), trend charts, and recent findings.
 
-### Manajemen Temuan (Findings)
+### Findings Management
 ![Findings List](public/screenshots/findings-list.png)
-> Daftar semua temuan dengan filter status, kategori, dan fitur export ke Excel/PDF.
+> List of all findings with status filters, categories, and export to Excel/PDF features.
 
-### Form Buat Temuan Baru
+### Create New Finding Form
 ![Create Finding](public/screenshots/create-finding.png)
-> Form pencatatan temuan baru dengan upload foto, input tanda tangan digital, dan validasi.
+> Form for recording new findings with photo upload, digital signature input, and validation.
 
-### Modul SMK3
+### SMK3 Module
 ![SMK3 Modules](public/screenshots/smk3-modules.png)
-> 12 Elemen SMK3 yang dapat dikelola, masing-masing dengan sub-elemen dan formulir data.
-
-### Dashboard SMK3
-![SMK3 Dashboard](public/screenshots/smk3-dashboard.png)
-> Dashboard khusus SMK3 dengan status kepatuhan per elemen dan statistik keseluruhan.
+> 12 SMK3 elements that can be managed, each with sub-elements and data forms.
 
 ### Admin Panel
 ![Admin Panel](public/screenshots/admin-panel.png)
-> Panel administrasi untuk manajemen pengguna — aktivasi, deaktivasi, dan atur supervisor.
+> Administration panel for user management — activation, deactivation, and assign supervisor.
 
-### Notifikasi
+### Notifications
 ![Notifications](public/screenshots/notifications.png)
-> Pusat notifikasi untuk approval temuan, status update, dan pesan sistem.
+> Notification center for finding approvals, status updates, and system messages.
 
 ---
 
-## 🔒 Fitur Keamanan
+## 🔒 Security Features
 
 - **JWT Authentication** via NextAuth.js — token-based session management
-- **Role-Based Access Control (RBAC)** — Admin, Supervisor, User dengan hak akses berbeda
-- **Password Hashing** — bcryptjs dengan salt rounds
-- **Forgot/Reset Password** — Alur reset password via token
-- **Protected Routes** — Middleware Next.js memblokir akses tanpa autentikasi
-- **Input Validation** — Zod schema validation di setiap form dan API endpoint
-- **Audit Logging** — Setiap perubahan data tercatat dengan user dan timestamp
-- **Soft Delete** — Data temuan tidak dihapus permanen (deletedAt)
+- **Role-Based Access Control (RBAC)** — Admin, Supervisor, User with different access rights
+- **Password Hashing** — bcryptjs with salt rounds
+- **Forgot/Reset Password** — Password reset flow via token
+- **Protected Routes** — Next.js middleware blocks access without authentication
+- **Input Validation** — Zod schema validation on every form and API endpoint
+- **Audit Logging** — Every data change recorded with user and timestamp
+- **Soft Delete** — Finding data not permanently deleted (deletedAt)
 
 ---
 
 ## 🚢 Deployment
 
-### Frontend — Vercel (Rekomendasi)
+### Frontend — Vercel (Recommended)
 
-1. Push kode ke repository GitHub
-2. Connect repository ke [Vercel](https://vercel.com)
-3. Tambahkan environment variables di Vercel dashboard:
+1. Push code to GitHub repository
+2. Connect repository to [Vercel](https://github.com/naz-ahtamir/crack-fe-naz-ahtamir)
+3. Add environment variables in Vercel dashboard:
    - `MONGODB_URI`
-   - `NEXTAUTH_URL` (URL production)
+   - `NEXTAUTH_URL` (production URL)
    - `NEXTAUTH_SECRET`
    - `NEXT_PUBLIC_API_URL`
-4. Deploy otomatis setiap push ke branch `main`
+4. Automatic deployment on every push to `main` branch
 
-### Backend Terpisah (Opsional)
+### Separate Backend (Optional)
 
-Jika menggunakan NestJS backend terpisah:
+If using separate NestJS backend:
 
-| Platform | Catatan |
+| Platform | Notes |
 |----------|---------|
-| Railway | Rekomendasi — mudah setup PostgreSQL & Redis |
-| Render | Free tier tersedia |
-| AWS Elastic Beanstalk | Untuk skala enterprise |
-| Docker | `docker-compose up` untuk lokal development |
+| Railway | Recommended — easy PostgreSQL & Redis setup |
+| Render | Free tier available |
+| AWS Elastic Beanstalk | For enterprise scale |
+| Docker | `docker-compose up` for local development |
 
 ---
 
-## 🤝 Kontribusi
+## 🤝 Contribution
 
-1. Fork repository ini
-2. Buat branch baru: `git checkout -b feature/nama-fitur`
-3. Commit perubahan: `git commit -m 'feat: tambah fitur X'`
-4. Push branch: `git push origin feature/nama-fitur`
-5. Buat Pull Request
+1. Fork this repository
+2. Create new branch: `git checkout -b feature/feature-name`
+3. Commit changes: `git commit -m 'feat: add feature X'`
+4. Push branch: `git push origin feature/feature-name`
+5. Create Pull Request
 
-### Konvensi Commit
-- `feat:` — Fitur baru
+### Commit Conventions
+- `feat:` — New feature
 - `fix:` — Bug fix
-- `docs:` — Perubahan dokumentasi
-- `style:` — Formatting (tidak mengubah logic)
-- `refactor:` — Refactoring kode
-- `chore:` — Maintenance (update deps, config, dll.)
+- `docs:` — Documentation changes
+- `style:` — Formatting (no logic changes)
+- `refactor:` — Code refactoring
+- `chore:` — Maintenance (update deps, config, etc.)
 
 ---
 
-## 📄 Lisensi
+## 📄 License
 
-Proyek ini adalah perangkat lunak proprietary. Semua hak dilindungi.
-
----
-
-## 📞 Support
-
-- Buat issue di GitHub repository
-- Hubungi tim pengembang: support@haami-safety.com
-- Dokumentasi lengkap: [docs.haami-safety.com](https://docs.haami-safety.com)
-
----
-
-**HAAMI — Making workplaces safer, one hazard at a time.**
-
-*Terakhir diperbarui: September 2026*
+This project is proprietary software. All rights reserved.

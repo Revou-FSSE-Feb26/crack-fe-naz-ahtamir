@@ -237,7 +237,7 @@ export default function LoginPage() {
             <div className="mt-6 text-center text-[13px] text-[#6b6560]">
               <p>Contoh kredensial dari database:</p>
               <div className="mt-2 space-y-1 font-mono text-xs">
-                <p>🔑 82400944 / 82400944K3 (Admin)</p>
+                <p>🔑 82401013 / 82401013K3 (Admin)</p>
                 <p>🔑 82400469 / 82400469K3 (Supervisor)</p>
                 <p>🔑 82400945 / 82400945K3 (User)</p>
               </div>
