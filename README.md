@@ -265,65 +265,7 @@ The application will run at **http://localhost:3000**
 
 ## 📊 ERD (Entity Relationship Diagram)
 
-```mermaid
-erDiagram
-    USERS ||--o{ SMK3_DATA : "creates"
-    USERS ||--o{ SMK3_DATA : "approves"
-    USERS ||--o{ NOTIFICATIONS : "receives"
-    USERS ||--o{ AUDIT_LOGS : "performs"
-    SMK3_DATA ||--o{ NOTIFICATIONS : "triggers"
-    SMK3_DATA ||--o{ AUDIT_LOGS : "tracked_in"
-
-    USERS {
-        uuid id PK
-        varchar name
-        varchar email UK
-        varchar idKaryawan UK
-        varchar password "bcrypt hashed"
-        enum role "admin | supervisor | user"
-        varchar department
-        boolean isActive
-        timestamp createdAt
-    }
-
-    SMK3_DATA {
-        uuid id PK
-        varchar subSubElementId "SMK3 element reference"
-        varchar title
-        enum findingStatus "OPEN | INPG | CLSD"
-        jsonb data "flexible form fields"
-        jsonb files "array file paths"
-        varchar createdBy
-        uuid createdById FK
-        varchar approvedBy
-        uuid approvedById FK
-        timestamp approvedAt
-        timestamp createdAt
-        timestamp updatedAt
-        timestamp deletedAt "soft delete"
-    }
-
-    NOTIFICATIONS {
-        uuid id PK
-        uuid userId FK
-        enum type "finding_submitted | approval_required | finding_approved | finding_rejected"
-        varchar title
-        text message
-        uuid findingId FK
-        boolean isRead
-        timestamp createdAt
-    }
-
-    AUDIT_LOGS {
-        uuid id PK
-        varchar tableName
-        uuid recordId
-        enum action "CREATE | UPDATE | DELETE"
-        uuid userId FK
-        jsonb changes "before/after data"
-        timestamp timestamp
-    }
-```
+![ERD](public/screenshots/ERD.png)
 
 ### Relationship Explanation
 
@@ -348,8 +290,6 @@ OPEN  ──► INPG (In Progress)  ──► CLSD (Closed)
 ---
 
 ## 📸 Screenshots
-
-> **Note**: Add application screenshots to the `public/screenshots/` folder then update the paths below.
 
 ### Landing Page
 ![Landing Page](public/screenshots/landing-page.png)
@@ -399,7 +339,7 @@ OPEN  ──► INPG (In Progress)  ──► CLSD (Closed)
 ### Frontend — Vercel (Recommended)
 
 1. Push code to GitHub repository
-2. Connect repository to [Vercel](https://github.com/naz-ahtamir/crack-fe-naz-ahtamir)
+2. Connect repository to [Vercel]
 3. Add environment variables in Vercel dashboard:
    - `MONGODB_URI`
    - `NEXTAUTH_URL` (production URL)
@@ -440,4 +380,4 @@ If using separate NestJS backend:
 
 ## 📄 License
 
-This project is proprietary software. All rights reserved.
+This project is proprietary and confidential. Unauthorized distribution or reproduction is prohibited.
