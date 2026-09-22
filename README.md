@@ -4,7 +4,7 @@ HAAMI is a web-based Occupational Health and Safety (OHS) management platform de
 
 ---
 
-## 🔗 Links
+## Links
 
 | | URL |
 |---|---|
@@ -14,11 +14,11 @@ HAAMI is a web-based Occupational Health and Safety (OHS) management platform de
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 ### SMK3 Management
 - **12 SMK3 Elements**: Complete implementation of 12 SMK3 elements according to PP 50/2012 regulations, covering commitment, OHS planning, document control, work safety, training, monitoring, and reporting.
-- **Findings CRUD**: Recording, management, and tracking of non-conformity findings with approval workflow (OPEN → INPG → CLSD).
+- **Findings CRUD**: Recording, management, and tracking of non-conformity findings with approval workflow (OPEN -> INPG -> CLSD).
 - **SMK3 Dashboard**: Summary of SMK3 element compliance status on a single page.
 
 ### Safety Compliance
@@ -61,7 +61,7 @@ HAAMI is a web-based Occupational Health and Safety (OHS) management platform de
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 | Technology | Version | Usage |
@@ -100,7 +100,7 @@ HAAMI is a web-based Occupational Health and Safety (OHS) management platform de
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 crack-fe-naz-ahtamir/
@@ -152,7 +152,7 @@ crack-fe-naz-ahtamir/
 │   │       ├── users/              # User management
 │   │       ├── notifications/      # Notification system
 │   │       ├── smk3-data/          # SMK3 finding data
-│   │       ├── kebijakan/          # OHS policies
+│   │       ���── kebijakan/          # OHS policies
 │   │       └── konsultasi/         # OHS consultations
 │   ├── components/                 # Reusable React components
 │   │   ├── ui/                     # Button, Input, Modal, Badge, etc.
@@ -184,7 +184,7 @@ crack-fe-naz-ahtamir/
 
 ---
 
-## 🚀 Installation & Usage
+## Installation & Usage
 
 ### Prerequisites
 
@@ -263,7 +263,7 @@ The application will run at **http://localhost:3000**
 
 ---
 
-## 📊 ERD (Entity Relationship Diagram)
+## ERD (Entity Relationship Diagram)
 
 ![ERD](public/screenshots/ERD.png)
 
@@ -271,25 +271,25 @@ The application will run at **http://localhost:3000**
 
 | Relation | Description |
 |--------|------------|
-| `USERS` → `SMK3_DATA` (creates) | One user can create many findings |
-| `USERS` → `SMK3_DATA` (approves) | One supervisor/admin can approve many findings |
-| `USERS` → `NOTIFICATIONS` | One user receives many notifications |
-| `SMK3_DATA` → `NOTIFICATIONS` | One finding can trigger many notifications (to creator & supervisors) |
-| `USERS` → `AUDIT_LOGS` | Every user action is recorded in audit logs |
-| `SMK3_DATA` → `AUDIT_LOGS` | Every finding change is tracked in audit logs |
+| `USERS` -> `SMK3_DATA` (creates) | One user can create many findings |
+| `USERS` -> `SMK3_DATA` (approves) | One supervisor/admin can approve many findings |
+| `USERS` -> `NOTIFICATIONS` | One user receives many notifications |
+| `SMK3_DATA` -> `NOTIFICATIONS` | One finding can trigger many notifications (to creator & supervisors) |
+| `USERS` -> `AUDIT_LOGS` | Every user action is recorded in audit logs |
+| `SMK3_DATA` -> `AUDIT_LOGS` | Every finding change is tracked in audit logs |
 
 ### Finding Status Flow
 
 ```
-OPEN  ──► INPG (In Progress)  ──► CLSD (Closed)
-  │                                     ▲
-  └─────────────────────────────────────┘
+OPEN  -> INPG (In Progress)  -> CLSD (Closed)
+  |                                     ^
+  +-------------------------------------+
          (direct approval to CLSD)
 ```
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 ### Landing Page
 ![Landing Page](public/screenshots/landing-page.png)
@@ -321,7 +321,7 @@ OPEN  ──► INPG (In Progress)  ──► CLSD (Closed)
 
 ---
 
-## 🔒 Security Features
+## Security Features
 
 - **JWT Authentication** via NextAuth.js — token-based session management
 - **Role-Based Access Control (RBAC)** — Admin, Supervisor, User with different access rights
@@ -334,7 +334,7 @@ OPEN  ──► INPG (In Progress)  ──► CLSD (Closed)
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Frontend — Vercel (Recommended)
 
@@ -360,7 +360,7 @@ If using separate NestJS backend:
 
 ---
 
-## 🤝 Contribution
+## Contribution
 
 1. Fork this repository
 2. Create new branch: `git checkout -b feature/feature-name`
@@ -378,6 +378,6 @@ If using separate NestJS backend:
 
 ---
 
-## 📄 License
+## License
 
 This project is proprietary and confidential. Unauthorized distribution or reproduction is prohibited.

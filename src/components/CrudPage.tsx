@@ -220,7 +220,16 @@ function FormModal({
     fields.forEach((f) => {
       if (!isFieldVisible(f)) return;
       if (f.key === 'dokumentasiPerbaikan' && data['findingStatus'] === 'CLSD' && !files[f.key]) {
-        e[f.key] = 'Wajib upload foto perbaikan untuk status CLSD';
+        // Saat edit: cek apakah file existing sudah ada (dari record sebelumnya)
+        // Bisa berupa string path di data[key] ATAU di initialValues?.data?.files[]
+        const hasExistingFile =
+          !!data[f.key] ||
+          !!(initialValues?.data as any)?.files?.some(
+            (file: { fieldName: string }) => file.fieldName === 'dokumentasiPerbaikan'
+          );
+        if (!hasExistingFile) {
+          e[f.key] = 'Wajib upload foto perbaikan untuk status CLSD';
+        }
       }
       if (f.required && f.type !== 'file' && !data[f.key]?.trim()) {
         e[f.key] = `${f.label} wajib diisi`;
@@ -1709,7 +1718,15 @@ function CrudPageInner({ config }: { config: CrudPageConfig }) {
           editTarget
             ? config.categoryId === 'sc-k3-policy'
               ? { title: (editTarget as any).judulKebijakan ?? '', data: editTarget as any }
-              : { title: editTarget.title, data: editTarget.data }
+              : {
+                  title: editTarget.title,
+                  data: {
+                    ...editTarget.data,
+                    // findingStatus ada di level record, bukan di dalam data — ikutkan agar FormModal
+                    // bisa me-load nilai yang sudah ada saat edit
+                    findingStatus: (editTarget as any).findingStatus ?? 'INPG',
+                  },
+                }
             : null
         }
       />
